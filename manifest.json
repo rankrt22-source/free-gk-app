@@ -1,0 +1,16 @@
+{
+  "name": "Daily GK & GS Prep",
+  "short_name": "GK Prep",
+  "description": "Free Daily Current Affairs and GK for Indian Competitive Exams",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/330/330996.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
