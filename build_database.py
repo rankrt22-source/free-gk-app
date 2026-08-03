@@ -1,38 +1,38 @@
 import os
 import json
-import random
 from google import genai
 
 # 1. Initialize Client
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-# The Core Exam Subjects
-subjects = [
-    "Indian Polity (Articles, Amendments, Parliament)",
-    "Modern Indian History (Freedom Struggle, INM)",
-    "Indian Geography (Rivers, Mountains, Climate)",
-    "Indian Economy (Five Year Plans, RBI, GDP)",
-    "General Science (Physics, Chemistry, Biology)",
-    "Environment & Ecology (National Parks, Treaties)"
-]
+# 2. Comprehensive Prompts covering ALL core competitive exam subjects
+pyq_prompt = """
+Act as an expert Indian Competitive Exam Faculty (UPSC, SSC CGL, State PCS).
+Generate a massive, diverse bank of 10 high-yield Previous Year Style Questions (MCQs) covering ALL of these core subjects:
+1. Indian Polity & Governance
+2. Modern Indian History & National Movement
+3. Indian & World Geography
+4. Indian Economy & Budget
+5. General Science (Physics, Chemistry, Biology)
+6. Environment, Ecology & Biodiversity
 
-# Pick 3 random subjects for this run so we don't overwhelm the API
-selected_subjects = random.sample(subjects, 3)
-
-# 2. Formulate Prompts
-pyq_prompt = f"""
-Act as an expert Indian Competitive Exam Faculty (UPSC, SSC CGL).
-Create exactly 3 high-yield Previous Year Style Questions (MCQs), one for each of these subjects: {selected_subjects}.
 Generate content in English (en), Hindi (hi), and Bengali (bn).
-Output a JSON array.
+Output strictly as a JSON array matching the required schema.
 """
 
-notes_prompt = f"""
+notes_prompt = """
 Act as an expert Indian Competitive Exam Faculty.
-Create exactly 3 "1-Minute Cheat Sheets" (quick revision notes), one for each of these subjects: {selected_subjects}.
+Generate a comprehensive bank of 8 detailed "1-Minute Cheat Sheets" (quick revision notes) covering ALL of these core subjects:
+1. Indian Polity
+2. Modern History
+3. Geography
+4. Economy
+5. General Science
+6. Environment
+
 Generate content in English (en), Hindi (hi), and Bengali (bn).
-Output a JSON array.
+Output strictly as a JSON array matching the required schema.
 """
 
 # 3. Schemas
@@ -67,7 +67,7 @@ notes_schema = {
     }
 }
 
-# 4. Self-Healing Model Resolver
+# 4. Model Resolver
 available_models = []
 try:
     for m in client.models.list():
@@ -77,14 +77,14 @@ try:
 except Exception:
     available_models = ["gemini-1.5-flash", "gemini-2.0-flash-lite"]
 
-def generate_and_save(prompt, schema, filename):
+def generate_massive_database(prompt, schema, filename):
     for model_name in available_models:
         try:
-            print(f"Generating {filename} using {model_name}...")
+            print(f"Generating massive batch for {filename} using {model_name}...")
             response = client.models.generate_content(
                 model=model_name,
                 contents=prompt,
-                config={"response_mime_type": "application/json", "response_schema": schema, "temperature": 0.4}
+                config={"response_mime_type": "application/json", "response_schema": schema, "temperature": 0.5}
             )
             
             new_data = json.loads(response.text)
@@ -96,14 +96,14 @@ def generate_and_save(prompt, schema, filename):
                         existing_data = json.load(f)
                     except: pass
             
-            # Combine and keep the latest 200 items so the app doesn't crash old phones
+            # Combine and expand database up to 300 items
             combined_data = new_data + existing_data
-            combined_data = combined_data[:200]
+            combined_data = combined_data[:300]
             
             with open(filename, 'w') as f:
                 json.dump(combined_data, f, indent=2)
                 
-            print(f"Successfully updated {filename}!")
+            print(f"Successfully updated {filename} with {len(new_data)} new items!")
             return True
         except Exception as e:
             print(f"Model {model_name} failed: {e}")
@@ -111,7 +111,7 @@ def generate_and_save(prompt, schema, filename):
     print(f"Failed to generate {filename}")
     return False
 
-# 5. Execute
-print(f"Selected subjects for today: {selected_subjects}")
-generate_and_save(pyq_prompt, pyq_schema, 'pyq_bank.json')
-generate_and_save(notes_prompt, notes_schema, 'cheat_sheets.json')
+# 5. Execute Full Generation
+print("Starting full database generation across all subjects...")
+generate_massive_database(pyq_prompt, pyq_schema, 'pyq_bank.json')
+generate_massive_database(notes_prompt, notes_schema, 'cheat_sheets.json')
