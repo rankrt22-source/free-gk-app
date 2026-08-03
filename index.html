@@ -1,68 +1,238 @@
-<script>
-function renderPYQs(data, lang = 'en') {
-    const container = document.getElementById('pyq-container');
-    if (!container) return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily GK & GS Prep</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hidden { display: none; }
+        .active-tab { border-bottom: 4px solid #3b82f6; color: #1d4ed8; font-weight: bold; }
+        .inactive-tab { color: #6b7280; font-weight: 500; }
+        .cheat-sheet-card { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans pb-10">
     
-    if (!data || data.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500 py-8">No PYQs available yet. Run the database builder action.</p>';
-        return;
-    }
+    <!-- App Header -->
+    <header class="bg-blue-700 text-white p-4 shadow-md sticky top-0 z-20 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-bold">Daily GK & GS</h1>
+            <p class="text-xs text-blue-200">The Complete Exam Portal</p>
+        </div>
+        <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-blue-800 text-white text-xs font-bold py-1.5 px-2 rounded-lg border border-blue-500 focus:outline-none">
+            <option value="en">English</option>
+            <option value="hi">हिन्दी</option>
+            <option value="bn">বাংলা</option>
+        </select>
+    </header>
 
-    container.innerHTML = data.map(item => {
-        const q = item.Question || item.question || {};
-        const opts = item.Options || item.options || {};
-        const exp = item.Explanation || item.explanation || {};
-        const subject = item.Subject || item.subject || 'General';
-        const exam = item.Exam || item.exam || 'UPSC/SSC';
+    <!-- Navigation Tabs -->
+    <nav class="bg-white shadow-sm sticky top-[68px] z-10 border-b border-gray-200">
+        <ul class="flex justify-around text-sm">
+            <li class="flex-1 text-center py-3 cursor-pointer active-tab transition-all" id="tab-daily" onclick="switchTab('daily')">📰 Daily</li>
+            <li class="flex-1 text-center py-3 cursor-pointer inactive-tab transition-all" id="tab-pyq" onclick="switchTab('pyq')">📜 PYQs</li>
+            <li class="flex-1 text-center py-3 cursor-pointer inactive-tab transition-all" id="tab-notes" onclick="switchTab('notes')">⏱️ Cheat Sheets</li>
+        </ul>
+    </nav>
 
-        const questionText = typeof q === 'string' ? q : (q[lang] || q['en'] || '');
-        const optionsText = typeof opts === 'string' ? opts : (opts[lang] || opts['en'] || '');
-        const explanationText = typeof exp === 'string' ? exp : (exp[lang] || exp['en'] || '');
+    <!-- Content Containers -->
+    <main class="p-4 max-w-2xl mx-auto space-y-5">
+        <div id="dailyContainer" class="block space-y-5"><div class="text-center text-gray-500 py-10 font-medium">Loading Daily News...</div></div>
+        <div id="pyqContainer" class="hidden space-y-5"><div class="text-center text-gray-500 py-10 font-medium">Loading PYQ Bank...</div></div>
+        <div id="notesContainer" class="hidden space-y-5"><div class="text-center text-gray-500 py-10 font-medium">Loading Cheat Sheets...</div></div>
+    </main>
 
-        return `
-            <div class="bg-white rounded-lg shadow-md p-6 mb-4 border border-gray-200">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">${subject}</span>
-                    <span class="text-gray-500 text-xs">${exam}</span>
-                </div>
-                <h3 class="text-lg font-bold text-gray-900 mb-3">${questionText}</h3>
-                <div class="bg-gray-50 p-3 rounded mb-3 text-sm text-gray-700 whitespace-pre-line">${optionsText}</div>
-                <div class="text-sm text-green-700 bg-green-50 p-3 rounded border border-green-200">
-                    <strong>Explanation:</strong> ${explanationText}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
+    <script>
+        let currentLang = 'en';
+        let dailyData = [];
+        let pyqData = [];
+        let notesData = [];
 
-function renderCheatSheets(data, lang = 'en') {
-    const container = document.getElementById('cheat-container');
-    if (!container) return;
+        const defaultPYQs = [
+            {
+                "Exam": "UPSC CSE 2023", "Subject": "Polity",
+                "Question": {"en": "What does 'Due Process of Law' mean?", "hi": "'कानून की उचित प्रक्रिया' का क्या अर्थ है?", "bn": "'Due Process of Law' বলতে কী বোঝায়?"},
+                "Options": {"en": "A) Natural justice | B) Procedure established by law | C) Fair application of law | D) Equality before law", "hi": "A) प्राकृतिक न्याय | B) कानून द्वारा स्थापित प्रक्रिया | C) कानून का उचित अनुप्रयोग | D) समानता", "bn": "A) প্রাকৃতিক ন্যায় | B) আইন দ্বারা প্রতিষ্ঠিত পদ্ধতি | C) আইনের ন্যায্য প্রয়োগ | D) সমতা"},
+                "Explanation": {"en": "Correct: C. It ensures laws are fair.", "hi": "सही: C. यह सुनिश्चित करता है कि कानून उचित हैं।", "bn": "সঠিক: C. এটি নিশ্চিত করে যে আইনগুলি ন্যায্য।"}
+            }
+        ];
 
-    if (!data || data.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500 py-8">No Cheat Sheets available yet.</p>';
-        return;
-    }
+        const defaultNotes = [
+            {
+                "Subject": "Polity Cheat Sheet", "Time": "1 Min Read",
+                "Title": {"en": "Fundamental Rights (Arts 14-18)", "hi": "मौलिक अधिकार (अनु 14-18)", "bn": "মৌলিক অধিকার (অনু ১৪-১৮)"},
+                "Content": {"en": "• Art 14: Equality\n• Art 15: No discrimination\n• Art 16: Public employment equal opportunity\n• Art 17: End of Untouchability\n• Art 18: Abolition of titles", "hi": "• अनु 14: समानता\n• अनु 15: कोई भेदभाव नहीं\n• अनु 16: रोजगार में समान अवसर\n• अनु 17: अस्पृश्यता का अंत\n• अनु 18: उपाधियों का अंत", "bn": "• অনু ১৪: সমতা\n• অনু ১৫: বৈষম্য নেই\n• অনু ১৬: কর্মসংস্থানে সমান সুযোগ\n• অনু ১৭: অস্পৃश्यতা বিলোপ\n• অনু ১৮: খেতাব বিলোপ"}
+            }
+        ];
 
-    container.innerHTML = data.map(item => {
-        const titleObj = item.Title || item.title || {};
-        const contentObj = item.Content || item.content || {};
-        const subject = item.Subject || item.subject || 'Revision';
-        const time = item.Time || item.time || '1 Min';
+        function getText(field) {
+            if (!field) return '';
+            if (typeof field === 'string') return field; 
+            return field[currentLang] || field['en'] || '';
+        }
 
-        const titleText = typeof titleObj === 'string' ? titleObj : (titleObj[lang] || titleObj['en'] || '');
-        const contentText = typeof contentObj === 'string' ? contentObj : (contentObj[lang] || contentObj['en'] || '');
+        function changeLanguage(lang) {
+            currentLang = lang;
+            renderDaily(); renderPYQs(); renderNotes();
+        }
 
-        return `
-            <div class="bg-white rounded-lg shadow-md p-6 mb-4 border border-gray-200">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded">${subject}</span>
-                    <span class="text-gray-500 text-xs">⏱️ ${time}</span>
-                </div>
-                <h3 class="text-lg font-bold text-gray-900 mb-3">${titleText}</h3>
-                <div class="text-sm text-gray-700 whitespace-pre-line leading-relaxed">${contentText}</div>
-            </div>
-        `;
-    }).join('');
-}
-</script>
+        function switchTab(tabId) {
+            ['daily', 'pyq', 'notes'].forEach(id => {
+                document.getElementById(`tab-${id}`).className = `flex-1 text-center py-3 cursor-pointer transition-all ${tabId === id ? 'active-tab' : 'inactive-tab'}`;
+                document.getElementById(`${id}Container`).classList.add('hidden');
+            });
+            document.getElementById(`${tabId}Container`).classList.remove('hidden');
+        }
+
+        async function fetchJSON(url, defaultData) {
+            try {
+                const res = await fetch(url + '?v=' + new Date().getTime());
+                if (res.ok) {
+                    const data = await res.json();
+                    return Array.isArray(data) && data.length > 0 ? data : defaultData;
+                }
+            } catch (e) {}
+            return defaultData;
+        }
+
+        async function loadAllData() {
+            dailyData = await fetchJSON('./latest_news.json', []);
+            pyqData = await fetchJSON('./pyq_bank.json', defaultPYQs);
+            notesData = await fetchJSON('./cheat_sheets.json', defaultNotes);
+            renderDaily(); renderPYQs(); renderNotes();
+        }
+
+        // SMART OPTION SPLITTER: Handles pipes OR auto-detects A), B), C), D) boundaries
+        function parseOptions(optionsRaw) {
+            if (!optionsRaw) return [];
+            if (optionsRaw.includes('|')) {
+                return optionsRaw.split('|').map(o => o.trim());
+            }
+            // Regex to split nicely when AI forgets pipes but puts A) B) C) D)
+            const matches = optionsRaw.match(/[A-D]\)[^A-D]*/g);
+            if (matches && matches.length > 0) {
+                return matches.map(o => o.trim());
+            }
+            return [optionsRaw];
+        }
+
+        // ADVANCED ANSWER DETECTOR: Maps explanation text securely to option letters
+        function parseCorrectLetter(explanationText, optionsArray) {
+            const expUpper = explanationText.toUpperCase();
+            
+            for (let letter of ['A', 'B', 'C', 'D']) {
+                if (expUpper.includes(letter + ')') || expUpper.includes('OPTION ' + letter) || expUpper.includes('CORRECT: ' + letter) || expUpper.includes('सही: ' + letter)) {
+                    return letter;
+                }
+            }
+
+            // Check for contextual matches like "Both statements are correct"
+            if (expUpper.includes('BOTH') || expUpper.includes('दोनों') || expUpper.includes('উভয়')) {
+                for (let opt of optionsArray) {
+                    if (opt.toUpperCase().includes('BOTH') || opt.includes('दोनों') || opt.includes('উভয়')) {
+                        return opt.charAt(0).toUpperCase();
+                    }
+                }
+            }
+
+            const match = expUpper.match(/\b([A-D])\b/);
+            if (match) return match[1];
+
+            return optionsArray.length > 0 ? optionsArray[0].charAt(0).toUpperCase() : 'A';
+        }
+
+        function renderDaily() {
+            const container = document.getElementById('dailyContainer');
+            if(dailyData.length === 0) { container.innerHTML = '<div class="text-center py-10 font-bold text-gray-500">No news today!</div>'; return; }
+            container.innerHTML = '';
+            dailyData.forEach((item, idx) => {
+                const opts = parseOptions(getText(item.Options));
+                const expl = getText(item.Explanation);
+                const correct = parseCorrectLetter(expl, opts);
+
+                const optHtml = opts.map((opt, oIdx) => {
+                    const optLetter = opt.charAt(0).toUpperCase();
+                    return `<button id="d-opt-${idx}-${oIdx}" onclick="check('daily', ${idx}, ${oIdx}, '${optLetter}', '${correct}')" class="daily-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="d-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`;
+                }).join('');
+                
+                container.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase">${item.Subject || 'GK'}</span>
+                        <h2 class="text-lg font-bold text-gray-900 mt-2 mb-2">${getText(item.Headline)}</h2>
+                        <ul class="mb-4">${getText(item.Summary).split('•').filter(s=>s.trim()).map(s=>`<li class="ml-4 list-disc text-sm text-gray-700">${s.trim()}</li>`).join('')}</ul>
+                        <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-100">
+                            <p class="font-medium text-sm text-gray-800 mb-3">${getText(item.Question)}</p>
+                            ${optHtml}
+                            <div id="d-ans-${idx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm">${expl}</div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function renderPYQs() {
+            const container = document.getElementById('pyqContainer');
+            container.innerHTML = '';
+            pyqData.forEach((item, idx) => {
+                const opts = parseOptions(getText(item.Options));
+                const expl = getText(item.Explanation);
+                const correct = parseCorrectLetter(expl, opts);
+
+                const optHtml = opts.map((opt, oIdx) => {
+                    const optLetter = opt.charAt(0).toUpperCase();
+                    return `<button id="p-opt-${idx}-${oIdx}" onclick="check('pyq', ${idx}, ${oIdx}, '${optLetter}', '${correct}')" class="pyq-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-yellow-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="p-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`;
+                }).join('');
+
+                container.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-sm border border-yellow-300 border-t-4 p-5">
+                        <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded uppercase">${item.Exam || 'PYQ'}</span>
+                        <p class="font-bold text-base text-gray-800 mt-3 mb-4">${getText(item.Question)}</p>
+                        ${optHtml}
+                        <div id="p-ans-${idx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm">${expl}</div>
+                    </div>`;
+            });
+        }
+
+        function renderNotes() {
+            const container = document.getElementById('notesContainer');
+            container.innerHTML = '';
+            notesData.forEach(item => {
+                container.innerHTML += `
+                    <div class="cheat-sheet-card rounded-xl shadow-sm border border-blue-200 p-5 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">${item.Time || 'Cheat Sheet'}</div>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase">${item.Subject}</span>
+                        <h2 class="text-xl font-extrabold text-gray-900 mt-2 mb-3 leading-tight">${getText(item.Title)}</h2>
+                        <ul class="mt-2 space-y-2">${getText(item.Content).split('•').filter(s=>s.trim()).map(s=>`<li class="flex items-start text-sm text-gray-800 font-medium"><span class="mr-2 text-blue-500">⚡</span>${s.trim()}</li>`).join('')}</ul>
+                    </div>`;
+            });
+        }
+
+        function check(type, idx, oIdx, sel, cor) {
+            const prefix = type === 'daily' ? 'd' : 'p';
+            document.querySelectorAll(`.${type}-btn-${idx}`).forEach(btn => btn.disabled = true);
+            const sBtn = document.getElementById(`${prefix}-opt-${idx}-${oIdx}`);
+            const sBad = document.getElementById(`${prefix}-badge-${idx}-${oIdx}`);
+            sBad.classList.remove('hidden');
+
+            if (sel === cor) {
+                sBtn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex justify-between";
+                sBad.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white"; sBad.innerText = "✓ Correct";
+            } else {
+                sBtn.className = "w-full text-left p-3 border-2 border-red-500 rounded-lg bg-red-100 text-sm mb-2 text-red-900 font-medium flex justify-between";
+                sBad.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-600 text-white"; sBad.innerText = "✕ Wrong";
+                document.querySelectorAll(`.${type}-btn-${idx}`).forEach((btn, i) => {
+                    const btnText = btn.querySelector('span').innerText.trim().toUpperCase();
+                    if (btnText.startsWith(cor + ')') || btnText.startsWith(cor + '.')) {
+                        btn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex justify-between";
+                        const b = document.getElementById(`${prefix}-badge-${idx}-${i}`);
+                        b.classList.remove('hidden'); b.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white"; b.innerText = "✓ Correct Answer";
+                    }
+                });
+            }
+            document.getElementById(`${prefix}-ans-${idx}`).classList.remove('hidden');
+        }
+
+        loadAllData();
+    </script>
+</body>
+</html>
