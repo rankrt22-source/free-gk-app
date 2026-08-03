@@ -8,54 +8,49 @@ from google import genai
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-# Reliable feeds with proper browser User-Agent headers
+# Fetch fewer items to stay well within free-tier token limits
 feeds = [
     ("https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1", "National PIB"),
-    ("https://www.thehindu.com/news/national/feeder/default.rss", "The Hindu National"),
-    ("https://indianexpress.com/section/india/feed/", "Indian Express")
+    ("https://www.thehindu.com/news/national/feeder/default.rss", "The Hindu")
 ]
 
 articles = []
 for url, source_name in feeds:
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         response = urllib.request.urlopen(req, timeout=10)
         root = ET.fromstring(response.read())
-        for item in root.findall('.//item')[:4]:
-            title_elem = item.find('title')
-            desc_elem = item.find('description')
-            if title_elem is not None and title_elem.text:
+        for item in root.findall('.//item')[:2]: # Reduced to 2 items per feed to save tokens
+            title = item.find('title')
+            desc = item.find('description')
+            if title is not None and title.text:
                 articles.append({
                     "source": source_name,
-                    "title": title_elem.text,
-                    "description": desc_elem.text if desc_elem is not None and desc_elem.text else ""
+                    "title": title.text,
+                    "description": desc.text[:200] if desc is not None and desc.text else "" # Truncate description length
                 })
     except Exception as e:
-        print(f"Skipping feed {source_name} due to error: {e}")
+        print(f"Skipping feed {source_name}: {e}")
 
-# Fallback static articles if feeds are temporarily blocked
 if not articles:
-    articles = [
-        {"source": "Fallback", "title": "India's Economic Growth and Policy Updates", "description": "Key structural reforms and fiscal developments across sectors."},
-        {"source": "Fallback", "title": "International Treaties and Global Summits", "description": "Major diplomatic developments affecting international relations."}
-    ]
+    articles = [{"source": "Fallback", "title": "National Policy and Governance Updates", "description": "Key structural reforms."}]
 
 prompt = f"""
 Act as an expert Indian Competitive Exam Faculty (UPSC, SSC CGL).
-Analyze these news articles and convert them into high-yield exam study material.
-Generate content in English (en), Hindi (hi), and Bengali (bn).
-Output strictly as a JSON array of 10 items matching the schema.
+Analyze these news items and create 5 high-yield exam study items.
+Translate into English (en), Hindi (hi), and Bengali (bn).
+Output strictly as a JSON array matching the schema.
 
-News Articles: {json.dumps(articles[:10], indent=2)}
+News: {json.dumps(articles, indent=2)}
 
-Format required per item:
+Format per item:
 - "Date": "{datetime.now().strftime('%Y-%m-%d')}"
-- "Subject": "Polity / Economy / International Relations / Science"
+- "Subject": "Polity / Economy / Current Affairs"
 - "Headline": {{"en": "...", "hi": "...", "bn": "..."}}
-- "Summary": {{"en": "• Bullet 1 • Bullet 2", "hi": "• बिंदु 1 • बिंदु 2", "bn": "• পয়েন্ট ১ • পয়েন্ট ২"}}
+- "Summary": {{"en": "• Point 1", "hi": "• बिंदु 1", "bn": "• পয়েন্ট ১"}}
 - "Question": {{"en": "...", "hi": "...", "bn": "..."}}
 - "Options": {{"en": "A) Opt1 | B) Opt2 | C) Opt3 | D) Opt4", "hi": "...", "bn": "..."}}
-- "Explanation": {{"en": "Correct: B. Detailed explanation", "hi": "...", "bn": "..."}}
+- "Explanation": {{"en": "Correct: B. Explanation", "hi": "...", "bn": "..."}}
 - "Source_Link": "https://pib.gov.in"
 """
 
@@ -79,8 +74,10 @@ response_schema = {
 }
 
 final_response = None
-for model_name in ["gemini-1.5-flash", "gemini-2.0-flash-lite"]:
+# Prioritize gemini-1.5-flash for stable free-tier limits
+for model_name in ["gemini-1.5-flash", "gemini-2.0-flash"]:
     try:
+        print(f"Attempting model: {model_name}")
         final_response = client.models.generate_content(
             model=model_name,
             contents=prompt,
@@ -101,8 +98,8 @@ if final_response:
     
     combined = new_data + existing_data
     with open('latest_news.json', 'w') as f:
-        json.dump(combined[:150], f, indent=2)
-    print("Daily news successfully generated and saved!")
+        json.dump(combined[:100], f, indent=2)
+    print("Success!")
 else:
-    print("Critical error: Failed to generate content from Gemini API.")
+    print("Error: All models exhausted or failed.")
     exit(1)
