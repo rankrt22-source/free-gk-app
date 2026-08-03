@@ -2,40 +2,41 @@ import os
 import json
 from google import genai
 
-# 1. Initialize Client
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-# 2. Comprehensive Prompts covering ALL core competitive exam subjects
-pyq_prompt = """
-Act as an expert Indian Competitive Exam Faculty (UPSC, SSC CGL, State PCS).
-Generate a massive, diverse bank of 10 high-yield Previous Year Style Questions (MCQs) covering ALL of these core subjects:
-1. Indian Polity & Governance
-2. Modern Indian History & National Movement
-3. Indian & World Geography
-4. Indian Economy & Budget
-5. General Science (Physics, Chemistry, Biology)
-6. Environment, Ecology & Biodiversity
+comprehensive_pyq_prompt = """
+Act as an expert Indian Competitive Exam Setter (UPSC, SSC CGL, State PSC).
+Generate a diverse batch of 12 high-yield Previous Year Style Questions (MCQs) covering these exact critical domains:
+1. Indian Art, Culture & Heritage (Temples, Dances, Architecture)
+2. Ancient & Medieval Indian History
+3. Modern Indian History & National Movement
+4. Physical & Indian Geography (Mapping, Rivers, Monsoons)
+5. Indian Polity (Fundamental Rights, DPSP, Judiciary, Amendments)
+6. Indian Economy (Inflation, Banking, Fiscal Policy, Budget terms)
+7. General Science & Technology (Space, Biotechnology, Physics)
+8. Environment & Ecology (Climate Conventions, Red Data List species)
 
-Generate content in English (en), Hindi (hi), and Bengali (bn).
-Output strictly as a JSON array matching the required schema.
+Translate all content into English (en), Hindi (hi), and Bengali (bn).
+Output strictly as a JSON array matching the schema.
 """
 
-notes_prompt = """
+comprehensive_notes_prompt = """
 Act as an expert Indian Competitive Exam Faculty.
-Generate a comprehensive bank of 8 detailed "1-Minute Cheat Sheets" (quick revision notes) covering ALL of these core subjects:
-1. Indian Polity
-2. Modern History
-3. Geography
-4. Economy
-5. General Science
-6. Environment
+Generate 10 detailed, high-yield "1-Minute Cheat Sheets" (rapid revision notes with bullet points) covering absolute must-know static topics for competitive exams:
+1. Important Constitutional Articles & Schedules
+2. Major Indus Valley & Vedic Civilization Sites
+3. Important Governor-Generals & Viceroys of India
+4. Major Mountain Passes & River Systems of India
+5. Five-Year Plans and Economic Reforms of India
+6. Important National Parks, Biosphere Reserves & Ramsar Sites
+7. Important Physics & Chemistry Laws/Formules in Daily Life
+8. Important Biological Diseases & Vitamins
 
-Generate content in English (en), Hindi (hi), and Bengali (bn).
-Output strictly as a JSON array matching the required schema.
+Translate all content into English (en), Hindi (hi), and Bengali (bn).
+Output strictly as a JSON array matching the schema.
 """
 
-# 3. Schemas
 lang_obj = {"type": "object", "properties": {"en": {"type": "string"}, "hi": {"type": "string"}, "bn": {"type": "string"}}, "required": ["en", "hi", "bn"]}
 
 pyq_schema = {
@@ -67,51 +68,35 @@ notes_schema = {
     }
 }
 
-# 4. Model Resolver
-available_models = []
-try:
-    for m in client.models.list():
-        clean_name = m.name.replace('models/', '')
-        if 'gemini' in clean_name and 'embed' not in clean_name:
-            available_models.append(clean_name)
-except Exception:
-    available_models = ["gemini-1.5-flash", "gemini-2.0-flash-lite"]
-
-def generate_massive_database(prompt, schema, filename):
-    for model_name in available_models:
+def generate_full_exam_bank(prompt, schema, filename):
+    for model_name in ["gemini-1.5-flash", "gemini-2.0-flash-lite"]:
         try:
-            print(f"Generating massive batch for {filename} using {model_name}...")
+            print(f"Generating full exam bank for {filename}...")
             response = client.models.generate_content(
                 model=model_name,
                 contents=prompt,
-                config={"response_mime_type": "application/json", "response_schema": schema, "temperature": 0.5}
+                config={"response_mime_type": "application/json", "response_schema": schema, "temperature": 0.4}
             )
-            
             new_data = json.loads(response.text)
             
             existing_data = []
             if os.path.exists(filename):
                 with open(filename, 'r') as f:
-                    try:
-                        existing_data = json.load(f)
+                    try: existing_data = json.load(f)
                     except: pass
             
-            # Combine and expand database up to 300 items
-            combined_data = new_data + existing_data
-            combined_data = combined_data[:300]
+            # Keep up to 400 deep exam items
+            combined = new_data + existing_data
+            combined = combined[:400]
             
             with open(filename, 'w') as f:
-                json.dump(combined_data, f, indent=2)
-                
-            print(f"Successfully updated {filename} with {len(new_data)} new items!")
+                json.dump(combined, f, indent=2)
+            print(f"Successfully expanded {filename}!")
             return True
         except Exception as e:
-            print(f"Model {model_name} failed: {e}")
+            print(f"Error with {model_name}: {e}")
             continue
-    print(f"Failed to generate {filename}")
     return False
 
-# 5. Execute Full Generation
-print("Starting full database generation across all subjects...")
-generate_massive_database(pyq_prompt, pyq_schema, 'pyq_bank.json')
-generate_massive_database(notes_prompt, notes_schema, 'cheat_sheets.json')
+generate_full_exam_bank(comprehensive_pyq_prompt, pyq_schema, 'pyq_bank.json')
+generate_full_exam_bank(comprehensive_notes_prompt, notes_schema, 'cheat_sheets.json')
