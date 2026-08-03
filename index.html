@@ -23,25 +23,22 @@
     </main>
 
     <script>
-        // Default content so the app NEVER stays stuck on "Loading..."
         const defaultData = [
             {
                 "Date": "2026-08-03",
                 "Subject": "Welcome",
                 "Headline": "Welcome to your Free GK & GS Prep Platform!",
-                "Summary": "• This app updates daily at 7:00 AM IST with news-based questions.\n• Built for UPSC, SSC CGL, and Railway aspirants.\n• Select 'Show Answer' below each practice MCQ to reveal explanations.",
+                "Summary": "• This app updates daily at 7:00 AM IST with news-based questions.\n• Built for UPSC, SSC CGL, and Railway aspirants.\n• Tap an option below to test your knowledge instantly!",
                 "Question": "When does this app automatically update with new current affairs?",
                 "Options": "A) Every month | B) Every morning at 7:00 AM IST | C) Once a week | D) Never",
-                "Explanation": "Correct Answer: B. The automated pipeline fetches news and creates MCQs every morning.",
+                "Explanation": "Correct: B. The automated pipeline fetches news and creates MCQs every morning.",
                 "Source_Link": "https://pib.gov.in"
             }
         ];
 
         async function loadContent() {
             let data = defaultData;
-
             try {
-                // Try fetching live news JSON file
                 const response = await fetch('./latest_news.json');
                 if (response.ok) {
                     const fetchedData = await response.json();
@@ -50,9 +47,8 @@
                     }
                 }
             } catch (error) {
-                console.log('Using fallback content until first automated run complete.');
+                console.log('Using fallback content.');
             }
-
             renderFeed(data);
         }
 
@@ -60,10 +56,28 @@
             const container = document.getElementById('feedContainer');
             container.innerHTML = '';
 
-            data.forEach((item, index) => {
-                const optionsHtml = (item.Options || '').split('|').map(opt => 
-                    `<div class="p-2.5 border rounded-lg bg-gray-50 text-sm mb-2 text-gray-800 font-medium">${opt.trim()}</div>`
-                ).join('');
+            data.forEach((item, cardIdx) => {
+                const optionsArr = (item.Options || '').split('|').map(o => o.trim());
+                
+                // Detect the correct option letter (A, B, C, or D) from the explanation
+                let correctLetter = "";
+                const match = (item.Explanation || '').match(/Correct(?:\s+Answer)?:\s*([A-D])/i);
+                if (match) {
+                    correctLetter = match[1].toUpperCase();
+                }
+
+                const optionsHtml = optionsArr.map((opt, optIdx) => {
+                    const optionLetter = opt.charAt(0).toUpperCase();
+                    return `
+                        <button 
+                            id="opt-${cardIdx}-${optIdx}"
+                            onclick="checkAnswer(${cardIdx}, ${optIdx}, '${optionLetter}', '${correctLetter}')"
+                            class="option-btn-${cardIdx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 text-gray-800 font-medium transition-all duration-150 flex items-center justify-between cursor-pointer focus:outline-none">
+                            <span>${opt}</span>
+                            <span id="badge-${cardIdx}-${optIdx}" class="text-xs font-bold px-2 py-0.5 rounded hidden"></span>
+                        </button>
+                    `;
+                }).join('');
                 
                 const summaryHtml = (item.Summary || '').split('•').filter(s => s.trim()).map(s => 
                     `<li class="ml-4 list-disc text-sm text-gray-700 mb-1.5">${s.trim()}</li>`
@@ -81,18 +95,55 @@
                         <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-100">
                             <h3 class="font-bold text-blue-900 text-xs uppercase tracking-wider mb-2">Practice MCQ</h3>
                             <p class="font-medium text-sm text-gray-800 mb-3">${item.Question || ''}</p>
-                            <div>${optionsHtml}</div>
                             
-                            <button onclick="document.getElementById('ans-${index}').classList.toggle('hidden')" class="mt-2 text-blue-700 font-bold text-xs uppercase tracking-wider hover:underline focus:outline-none">
-                                Reveal Answer & Explanation
-                            </button>
+                            <div class="space-y-1">${optionsHtml}</div>
                             
-                            <div id="ans-${index}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm font-medium">
+                            <div id="ans-${cardIdx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm font-medium">
                                 ${item.Explanation || ''}
                             </div>
                         </div>
                     </div>`;
             });
+        }
+
+        function checkAnswer(cardIdx, selectedOptIdx, selectedLetter, correctLetter) {
+            // Disable all buttons for this card once an answer is selected
+            const buttons = document.querySelectorAll(`.option-btn-${cardIdx}`);
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('hover:bg-blue-50', 'cursor-pointer');
+            });
+
+            const selectedBtn = document.getElementById(`opt-${cardIdx}-${selectedOptIdx}`);
+            const selectedBadge = document.getElementById(`badge-${cardIdx}-${selectedOptIdx}`);
+            selectedBadge.classList.remove('hidden');
+
+            if (selectedLetter === correctLetter && correctLetter !== "") {
+                // Selected option is CORRECT
+                selectedBtn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex items-center justify-between";
+                selectedBadge.innerText = "✓ Correct";
+                selectedBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white";
+            } else {
+                // Selected option is INCORRECT
+                selectedBtn.className = "w-full text-left p-3 border-2 border-red-500 rounded-lg bg-red-100 text-sm mb-2 text-red-900 font-medium flex items-center justify-between";
+                selectedBadge.innerText = "✕ Wrong";
+                selectedBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-600 text-white";
+
+                // Highlight the correct answer in green
+                buttons.forEach((btn, idx) => {
+                    const text = btn.querySelector('span').innerText.trim();
+                    if (text.startsWith(correctLetter) && correctLetter !== "") {
+                        btn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex items-center justify-between";
+                        const badge = document.getElementById(`badge-${cardIdx}-${idx}`);
+                        badge.classList.remove('hidden');
+                        badge.innerText = "✓ Correct Answer";
+                        badge.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white";
+                    }
+                });
+            }
+
+            // Automatically reveal explanation
+            document.getElementById(`ans-${cardIdx}`).classList.remove('hidden');
         }
 
         loadContent();
