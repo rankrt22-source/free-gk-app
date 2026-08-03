@@ -4,7 +4,6 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from google import genai
-from google.genai import types
 
 # 1. Initialize the Google Gen AI Client
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -71,21 +70,43 @@ response_schema = {
     }
 }
 
-# 6. Generate JSON Output
+# 6. Self-Healing Model Selection Engine
+models_to_test = [
+    "gemini-2.0-flash-lite", 
+    "gemini-1.5-pro",
+    "gemini-1.5-flash-001",
+    "gemini-1.5-flash-002",
+    "gemini-pro"
+]
+
+final_response = None
+
+for model_name in models_to_test:
+    try:
+        print(f"Attempting to use model: {model_name}...")
+        final_response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": response_schema,
+                "temperature": 0.2
+            }
+        )
+        print(f"SUCCESS! Using {model_name}")
+        break # Exit the loop immediately once a working model is found
+    except Exception as e:
+        print(f"Model {model_name} rejected by API: {e}")
+        continue
+
+# If every single model fails, stop the script
+if final_response is None:
+    print("CRITICAL ERROR: All models failed. Your API key might not have access to any free-tier models.")
+    exit(1)
+
+# 7. Save output to a file for the web app to read
 try:
-    # Switched back to 1.5-flash to completely avoid quota errors
-    response = client.models.generate_content(
-        model="gemini-1.5-flash-8b",
-        contents=prompt,
-        config={
-            "response_mime_type": "application/json",
-            "response_schema": response_schema,
-            "temperature": 0.2
-        }
-    )
-    
-    # 7. Save output to a file for the web app to read
-    new_data = json.loads(response.text)
+    new_data = json.loads(final_response.text)
     
     existing_data = []
     if os.path.exists('latest_news.json'):
@@ -103,4 +124,4 @@ try:
 
     print("Daily content generated and saved successfully!")
 except Exception as e:
-    print(f"Error calling Gemini API: {e}")
+    print(f"Error formatting or saving data: {e}")
