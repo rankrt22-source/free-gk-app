@@ -31,7 +31,8 @@ jobs:
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.name "actions-user"
+          git pull origin main --rebase || echo "Rebase skipped"
           git add pyq_bank.json cheat_sheets.json
-          git commit -m "Automated update: Added new PYQs and Cheat Sheets" || echo "No changes to commit"
-          git push
+          git commit -m "Automated update: Added new PYQs and Cheat Sheets" || exit 0
+          git push origin main
