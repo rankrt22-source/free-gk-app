@@ -1,6 +1,16 @@
 [
   {
     "Date": "2026-08-03",
+    "Subject": "Polity",
+    "Headline": "Election Commission Launches Digital Voter Roll Verification System",
+    "Summary": "\u2022 The Election Commission of India (ECI) has launched an updated digital voter verification platform. \u2022 The initiative leverages AI-driven technology to purge duplicate voter entries across states. \u2022 It aims to enhance electoral integrity and ensure seamless registration for eligible citizens.",
+    "Question": "With reference to the Election Commission of India (ECI), consider the following statements: 1. The Chief Election Commissioner can be removed from office in the same manner and on the same grounds as a Judge of the Supreme Court. 2. The conditions of service of the Chief Election Commissioner cannot be varied to his disadvantage after his appointment. Which of the statements given above is/are correct?",
+    "Options": "A) 1 only | B) 2 only | C) Both 1 and 2 | D) Neither 1 nor 2",
+    "Explanation": "Both statements are correct. Article 324 of the Constitution provides safeguards to ensure the independence and impartiality of the Election Commission. The CEC is provided with security of tenure and can only be removed by Parliament through a process similar to the removal of a Supreme Court Judge.",
+    "Source_Link": "https://eci.gov.in"
+  },
+  {
+    "Date": "2026-08-03",
     "Subject": "Economy",
     "Headline": "RBI Framework for Digital Payments Intelligence Platform",
     "Summary": "\u2022 The Reserve Bank of India established a committee to set up a Digital Payments Intelligence Platform. \u2022 The platform utilizes AI and Machine Learning to mitigate payment frauds in real-time. \u2022 It enables network-level intelligence sharing across all financial system operators.",
