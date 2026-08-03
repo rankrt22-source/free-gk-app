@@ -68,35 +68,54 @@ notes_schema = {
     }
 }
 
+# Resilient Multi-Model Fallback Sequence
+fallback_models = [
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro"
+]
+
 def generate_full_exam_bank(prompt, schema, filename):
-    for model_name in ["gemini-1.5-flash", "gemini-2.0-flash-lite"]:
+    final_response = None
+    for model_name in fallback_models:
         try:
-            print(f"Generating full exam bank for {filename}...")
-            response = client.models.generate_content(
+            print(f"Attempting {filename} using model: {model_name}...")
+            final_response = client.models.generate_content(
                 model=model_name,
                 contents=prompt,
                 config={"response_mime_type": "application/json", "response_schema": schema, "temperature": 0.4}
             )
-            new_data = json.loads(response.text)
-            
+            print(f"Successfully generated {filename} using {model_name}!")
+            break
+        except Exception as e:
+            print(f"Model {model_name} quota/rate limit reached or unavailable for {filename}: {e}")
+            continue
+    
+    if final_response:
+        try:
+            new_data = json.loads(final_response.text)
             existing_data = []
             if os.path.exists(filename):
                 with open(filename, 'r') as f:
                     try: existing_data = json.load(f)
                     except: pass
             
-            # Keep up to 400 deep exam items
+            # Combine and expand database up to 400 deep exam items
             combined = new_data + existing_data
             combined = combined[:400]
             
             with open(filename, 'w') as f:
                 json.dump(combined, f, indent=2)
-            print(f"Successfully expanded {filename}!")
+            print(f"Successfully saved {len(new_data)} items to {filename}!")
             return True
-        except Exception as e:
-            print(f"Error with {model_name}: {e}")
-            continue
+        except Exception as parse_err:
+            print(f"Error parsing response for {filename}: {parse_err}")
+    else:
+        print(f"Temporary quota limits reached across all models for {filename}.")
     return False
 
+print("Starting full database generation across all subjects with resilient fallbacks...")
 generate_full_exam_bank(comprehensive_pyq_prompt, pyq_schema, 'pyq_bank.json')
 generate_full_exam_bank(comprehensive_notes_prompt, notes_schema, 'cheat_sheets.json')
