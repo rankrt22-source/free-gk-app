@@ -103,30 +103,43 @@
             renderDaily(); renderPYQs(); renderNotes();
         }
 
-        // IMPROVED ANSWER PARSER: Looks for option letters anywhere in the explanation text
+        // SMART OPTION SPLITTER: Handles pipes OR auto-detects A), B), C), D) boundaries
+        function parseOptions(optionsRaw) {
+            if (!optionsRaw) return [];
+            if (optionsRaw.includes('|')) {
+                return optionsRaw.split('|').map(o => o.trim());
+            }
+            // Regex to split nicely when AI forgets pipes but puts A) B) C) D)
+            const matches = optionsRaw.match(/[A-D]\)[^A-D]*/g);
+            if (matches && matches.length > 0) {
+                return matches.map(o => o.trim());
+            }
+            return [optionsRaw];
+        }
+
+        // ADVANCED ANSWER DETECTOR: Maps explanation text securely to option letters
         function parseCorrectLetter(explanationText, optionsArray) {
             const expUpper = explanationText.toUpperCase();
             
-            // 1. Check if a letter A, B, C, or D is explicitly stated near "CORRECT" or "ANSWER"
             for (let letter of ['A', 'B', 'C', 'D']) {
-                if (expUpper.includes(letter + ')') || expUpper.includes('OPTION ' + letter) || expUpper.includes(letter + ' IS CORRECT')) {
+                if (expUpper.includes(letter + ')') || expUpper.includes('OPTION ' + letter) || expUpper.includes('CORRECT: ' + letter) || expUpper.includes('सही: ' + letter)) {
                     return letter;
                 }
             }
 
-            // 2. Fallback: Match any isolated letter A-D mentioned as the correct option
+            // Check for contextual matches like "Both statements are correct"
+            if (expUpper.includes('BOTH') || expUpper.includes('दोनों') || expUpper.includes('উভয়')) {
+                for (let opt of optionsArray) {
+                    if (opt.toUpperCase().includes('BOTH') || opt.includes('दोनों') || opt.includes('উভয়')) {
+                        return opt.charAt(0).toUpperCase();
+                    }
+                }
+            }
+
             const match = expUpper.match(/\b([A-D])\b/);
             if (match) return match[1];
 
-            // 3. Intelligent fallback: check which option text matches words in the explanation
-            for (let opt of optionsArray) {
-                const optLetter = opt.charAt(0).toUpperCase();
-                const optCoreText = opt.substring(2).trim().toLowerCase();
-                if (optCoreText.length > 3 && explanationText.toLowerCase().includes(optCoreText)) {
-                    return optLetter;
-                }
-            }
-            return 'A'; // Ultimate fallback
+            return optionsArray.length > 0 ? optionsArray[0].charAt(0).toUpperCase() : 'A';
         }
 
         function renderDaily() {
@@ -134,11 +147,14 @@
             if(dailyData.length === 0) { container.innerHTML = '<div class="text-center py-10 font-bold text-gray-500">No news today!</div>'; return; }
             container.innerHTML = '';
             dailyData.forEach((item, idx) => {
-                const opts = getText(item.Options).split('|').map(o => o.trim());
+                const opts = parseOptions(getText(item.Options));
                 const expl = getText(item.Explanation);
                 const correct = parseCorrectLetter(expl, opts);
 
-                const optHtml = opts.map((opt, oIdx) => `<button id="d-opt-${idx}-${oIdx}" onclick="check('daily', ${idx}, ${oIdx}, '${opt.charAt(0).toUpperCase()}', '${correct}')" class="daily-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="d-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`).join('');
+                const optHtml = opts.map((opt, oIdx) => {
+                    const optLetter = opt.charAt(0).toUpperCase();
+                    return `<button id="d-opt-${idx}-${oIdx}" onclick="check('daily', ${idx}, ${oIdx}, '${optLetter}', '${correct}')" class="daily-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="d-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`;
+                }).join('');
                 
                 container.innerHTML += `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -158,15 +174,18 @@
             const container = document.getElementById('pyqContainer');
             container.innerHTML = '';
             pyqData.forEach((item, idx) => {
-                const opts = getText(item.Options).split('|').map(o => o.trim());
+                const opts = parseOptions(getText(item.Options));
                 const expl = getText(item.Explanation);
                 const correct = parseCorrectLetter(expl, opts);
 
-                const optHtml = opts.map((opt, oIdx) => `<button id="p-opt-${idx}-${oIdx}" onclick="check('pyq', ${idx}, ${oIdx}, '${opt.charAt(0).toUpperCase()}', '${correct}')" class="pyq-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-yellow-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="p-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`).join('');
+                const optHtml = opts.map((opt, oIdx) => {
+                    const optLetter = opt.charAt(0).toUpperCase();
+                    return `<button id="p-opt-${idx}-${oIdx}" onclick="check('pyq', ${idx}, ${oIdx}, '${optLetter}', '${correct}')" class="pyq-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-yellow-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="p-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`;
+                }).join('');
 
                 container.innerHTML += `
                     <div class="bg-white rounded-xl shadow-sm border border-yellow-300 border-t-4 p-5">
-                        <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded uppercase">${item.Exam}</span>
+                        <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded uppercase">${item.Exam || 'PYQ'}</span>
                         <p class="font-bold text-base text-gray-800 mt-3 mb-4">${getText(item.Question)}</p>
                         ${optHtml}
                         <div id="p-ans-${idx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm">${expl}</div>
@@ -195,17 +214,18 @@
             const sBad = document.getElementById(`${prefix}-badge-${idx}-${oIdx}`);
             sBad.classList.remove('hidden');
 
-            if (sel === cor && cor !== "") {
+            if (sel === cor) {
                 sBtn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex justify-between";
-                sBad.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white"; sBad.innerText = "✓";
+                sBad.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white"; sBad.innerText = "✓ Correct";
             } else {
                 sBtn.className = "w-full text-left p-3 border-2 border-red-500 rounded-lg bg-red-100 text-sm mb-2 text-red-900 font-medium flex justify-between";
-                sBad.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-600 text-white"; sBad.innerText = "✕";
+                sBad.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-600 text-white"; sBad.innerText = "✕ Wrong";
                 document.querySelectorAll(`.${type}-btn-${idx}`).forEach((btn, i) => {
-                    if (btn.querySelector('span').innerText.trim().startsWith(cor) && cor !== "") {
+                    const btnText = btn.querySelector('span').innerText.trim().toUpperCase();
+                    if (btnText.startsWith(cor + ')') || btnText.startsWith(cor + '.')) {
                         btn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex justify-between";
                         const b = document.getElementById(`${prefix}-badge-${idx}-${i}`);
-                        b.classList.remove('hidden'); b.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white"; b.innerText = "✓";
+                        b.classList.remove('hidden'); b.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white"; b.innerText = "✓ Correct Answer";
                     }
                 });
             }
