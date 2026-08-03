@@ -51,7 +51,7 @@ Format required:
 ]
 """
 
-# 5. Define the Response Schema as a standard dictionary
+# 5. Define the Response Schema
 response_schema = {
     "type": "array",
     "items": {
@@ -70,20 +70,25 @@ response_schema = {
     }
 }
 
-# 6. Self-Healing Model Selection Engine
-models_to_test = [
-    "gemini-2.0-flash-lite", 
-    "gemini-1.5-pro",
-    "gemini-1.5-flash-001",
-    "gemini-1.5-flash-002",
-    "gemini-pro"
-]
+# 6. DYNAMICALLY FIND A WORKING MODEL
+print("Asking Google which models are unlocked for this API key...")
+available_models = []
+try:
+    # Ask Google for the exact list of allowed models
+    for m in client.models.list():
+        clean_name = m.name.replace('models/', '')
+        if 'gemini' in clean_name and 'embed' not in clean_name:
+            available_models.append(clean_name)
+    print(f"Google says you have access to: {available_models}")
+except Exception as e:
+    print(f"Could not fetch model list: {e}")
+    # Fallback if the list command fails
+    available_models = ["gemini-1.5-flash", "gemini-1.5-pro"]
 
 final_response = None
-
-for model_name in models_to_test:
+for model_name in available_models:
     try:
-        print(f"Attempting to use model: {model_name}...")
+        print(f"Attempting to use dynamically found model: {model_name}...")
         final_response = client.models.generate_content(
             model=model_name,
             contents=prompt,
@@ -94,14 +99,13 @@ for model_name in models_to_test:
             }
         )
         print(f"SUCCESS! Using {model_name}")
-        break # Exit the loop immediately once a working model is found
+        break 
     except Exception as e:
-        print(f"Model {model_name} rejected by API: {e}")
+        print(f"Model {model_name} failed: {e}")
         continue
 
-# If every single model fails, stop the script
 if final_response is None:
-    print("CRITICAL ERROR: All models failed. Your API key might not have access to any free-tier models.")
+    print("CRITICAL ERROR: All dynamically fetched models failed.")
     exit(1)
 
 # 7. Save output to a file for the web app to read
@@ -117,7 +121,7 @@ try:
                 pass
                 
     combined_data = new_data + existing_data
-    combined_data = combined_data[:100] # Keep the last 100 entries
+    combined_data = combined_data[:100]
 
     with open('latest_news.json', 'w') as f:
         json.dump(combined_data, f, indent=2)
