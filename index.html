@@ -7,81 +7,162 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .hidden { display: none; }
+        .active-tab { border-bottom: 4px solid #3b82f6; color: #1d4ed8; font-weight: bold; }
+        .inactive-tab { color: #6b7280; font-weight: 500; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans pb-10">
+<body class="bg-gray-50 min-h-screen font-sans pb-10">
     
-    <!-- App Header -->
-    <header class="bg-blue-700 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center">
-        <h1 class="text-xl font-bold">Daily GK & GS Tracker</h1>
-        <span class="text-xs bg-blue-800 px-2 py-1 rounded font-semibold">100% Free</span>
+    <!-- App Header with Language Selector -->
+    <header class="bg-blue-700 text-white p-4 shadow-md sticky top-0 z-20 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-bold">Daily GK & GS</h1>
+            <p class="text-xs text-blue-200">The Complete Exam Portal</p>
+        </div>
+        
+        <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-blue-800 text-white text-xs font-bold py-1.5 px-2 rounded-lg border border-blue-500 focus:outline-none">
+            <option value="en">English</option>
+            <option value="hi">हिन्दी (Hindi)</option>
+            <option value="bn">বাংলা (Bengali)</option>
+        </select>
     </header>
 
-    <!-- Main Content Feed -->
-    <main id="feedContainer" class="p-4 max-w-2xl mx-auto space-y-5">
-        <div class="text-center text-gray-500 py-10 font-medium">Loading study material...</div>
+    <!-- Navigation Tabs -->
+    <nav class="bg-white shadow-sm sticky top-[68px] z-10 border-b border-gray-200">
+        <ul class="flex justify-around text-sm">
+            <li class="flex-1 text-center py-3 cursor-pointer active-tab transition-all" id="tab-daily" onclick="switchTab('daily')">📰 Daily GK</li>
+            <li class="flex-1 text-center py-3 cursor-pointer inactive-tab transition-all" id="tab-pyq" onclick="switchTab('pyq')">📜 PYQs</li>
+            <li class="flex-1 text-center py-3 cursor-pointer inactive-tab transition-all" id="tab-notes" onclick="switchTab('notes')">📚 Notes</li>
+        </ul>
+    </nav>
+
+    <!-- Content Containers -->
+    <main class="p-4 max-w-2xl mx-auto space-y-5">
+        <!-- 1. Daily GK Container -->
+        <div id="dailyContainer" class="block space-y-5">
+            <div class="text-center text-gray-500 py-10 font-medium">Loading today's news...</div>
+        </div>
+
+        <!-- 2. PYQ Container -->
+        <div id="pyqContainer" class="hidden space-y-5"></div>
+
+        <!-- 3. Study Notes Container -->
+        <div id="notesContainer" class="hidden space-y-5"></div>
     </main>
 
     <script>
-        const defaultData = [
+        let currentLang = 'en';
+        let dailyData = [];
+
+        // --- HARDCODED STUDY MATERIAL DATA ---
+        // You can add as many previous year questions here as you want!
+        const pyqData = [
             {
-                "Date": "2026-08-03",
-                "Subject": "Welcome",
-                "Headline": "Welcome to your Free GK & GS Prep Platform!",
-                "Summary": "• This app updates daily at 7:00 AM IST with news-based questions.\n• Built for UPSC, SSC CGL, and Railway aspirants.\n• Tap an option below to test your knowledge instantly!",
-                "Question": "When does this app automatically update with new current affairs?",
-                "Options": "A) Every month | B) Every morning at 7:00 AM IST | C) Once a week | D) Never",
-                "Explanation": "Correct: B. The automated pipeline fetches news and creates MCQs every morning.",
-                "Source_Link": "https://pib.gov.in"
+                "Exam": "UPSC CSE Prelims 2023",
+                "Subject": "Polity",
+                "Question": {
+                    "en": "In essence, what does 'Due Process of Law' mean?",
+                    "hi": "संक्षेप में, 'कानून की उचित प्रक्रिया' (Due Process of Law) का क्या अर्थ है?",
+                    "bn": "সংক্ষেপে, 'Due Process of Law' বলতে কী বোঝায়?"
+                },
+                "Options": {
+                    "en": "A) The principle of natural justice | B) The procedure established by law | C) Fair application of law | D) Equality before law",
+                    "hi": "A) प्राकृतिक न्याय का सिद्धांत | B) कानून द्वारा स्थापित प्रक्रिया | C) कानून का उचित अनुप्रयोग | D) कानून के समक्ष समानता",
+                    "bn": "A) প্রাকৃতিক ন্যায়ের নীতি | B) আইন দ্বারা প্রতিষ্ঠিত পদ্ধতি | C) আইনের ন্যায্য প্রয়োগ | D) আইনের দৃষ্টিতে সমতা"
+                },
+                "Explanation": {
+                    "en": "Correct: C. It ensures that laws are inherently fair, just, and not arbitrary.",
+                    "hi": "सही: C. यह सुनिश्चित करता है कि कानून स्वाभाविक रूप से उचित, न्यायसंगत और मनमाना नहीं हैं।",
+                    "bn": "সঠিক: C. এটি নিশ্চিত করে যে আইনগুলি স্বভাবতই ন্যায্য এবং স্বেচ্ছাচারী নয়।"
+                }
             }
         ];
 
-        async function loadContent() {
-            let data = defaultData;
+        // Core Static Notes
+        const notesData = [
+            {
+                "Subject": "Indian Polity",
+                "Title": {
+                    "en": "Fundamental Rights (Articles 14-18)",
+                    "hi": "मौलिक अधिकार (अनुच्छेद 14-18)",
+                    "bn": "মৌলিক অধিকার (অনুচ্ছেদ ১৪-১৮)"
+                },
+                "Content": {
+                    "en": "• Art 14: Equality before the law.\n• Art 15: Prohibition of discrimination.\n• Art 16: Equality of opportunity in public employment.\n• Art 17: Abolition of Untouchability.\n• Art 18: Abolition of titles.",
+                    "hi": "• अनु 14: कानून के समक्ष समानता।\n• अनु 15: भेदभाव का निषेध।\n• अनु 16: सार्वजनिक रोजगार में अवसर की समानता।\n• अनु 17: अस्पृश्यता का अंत।\n• अनु 18: उपाधियों का अंत।",
+                    "bn": "• অনু ১৪: আইনের দৃষ্টিতে সমতা।\n• অনু ১৫: বৈষম্য নিষিদ্ধকরণ।\n• অনু ১৬: সরকারি চাকরিতে সমান সুযোগ।\n• অনু ১৭: অস্পৃশ্যতা বিলোপ।\n• অনু ১৮: খেতাব বিলোপ।"
+                }
+            }
+        ];
+
+        // --- CORE FUNCTIONS ---
+        function getText(field) {
+            if (!field) return '';
+            if (typeof field === 'string') return field; 
+            return field[currentLang] || field['en'] || '';
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            renderDaily();
+            renderPYQs();
+            renderNotes();
+        }
+
+        function switchTab(tabId) {
+            document.getElementById('tab-daily').className = "flex-1 text-center py-3 cursor-pointer transition-all " + (tabId === 'daily' ? 'active-tab' : 'inactive-tab');
+            document.getElementById('tab-pyq').className = "flex-1 text-center py-3 cursor-pointer transition-all " + (tabId === 'pyq' ? 'active-tab' : 'inactive-tab');
+            document.getElementById('tab-notes').className = "flex-1 text-center py-3 cursor-pointer transition-all " + (tabId === 'notes' ? 'active-tab' : 'inactive-tab');
+
+            document.getElementById('dailyContainer').classList.add('hidden');
+            document.getElementById('pyqContainer').classList.add('hidden');
+            document.getElementById('notesContainer').classList.add('hidden');
+
+            document.getElementById(tabId + 'Container').classList.remove('hidden');
+        }
+
+        // --- RENDER DAILY NEWS (From AI File) ---
+        async function loadDailyContent() {
             try {
-                const response = await fetch('./latest_news.json');
+                const response = await fetch('./latest_news.json?v=' + new Date().getTime());
                 if (response.ok) {
                     const fetchedData = await response.json();
                     if (Array.isArray(fetchedData) && fetchedData.length > 0) {
-                        data = fetchedData;
+                        dailyData = fetchedData;
                     }
                 }
             } catch (error) {
-                console.log('Using fallback content.');
+                console.log("Waiting for AI data...");
             }
-            renderFeed(data);
+            renderDaily();
         }
 
-        function renderFeed(data) {
-            const container = document.getElementById('feedContainer');
+        function renderDaily() {
+            const container = document.getElementById('dailyContainer');
+            if(dailyData.length === 0) {
+                 container.innerHTML = '<div class="text-center py-10 font-bold text-gray-500">Wait for your GitHub Action to finish running!</div>';
+                 return;
+            }
             container.innerHTML = '';
+            
+            dailyData.forEach((item, cardIdx) => {
+                const headline = getText(item.Headline);
+                const summaryRaw = getText(item.Summary);
+                const question = getText(item.Question);
+                const optionsRaw = getText(item.Options);
+                const explanation = getText(item.Explanation);
 
-            data.forEach((item, cardIdx) => {
-                const optionsArr = (item.Options || '').split('|').map(o => o.trim());
-                
-                // Detect the correct option letter (A, B, C, or D) from the explanation
+                const optionsArr = optionsRaw.split('|').map(o => o.trim());
                 let correctLetter = "";
-                const match = (item.Explanation || '').match(/Correct(?:\s+Answer)?:\s*([A-D])/i);
-                if (match) {
-                    correctLetter = match[1].toUpperCase();
-                }
+                const match = explanation.match(/(?:Correct|सही|সঠিক):\s*([A-D])/i);
+                if (match) correctLetter = match[1].toUpperCase();
 
                 const optionsHtml = optionsArr.map((opt, optIdx) => {
                     const optionLetter = opt.charAt(0).toUpperCase();
-                    return `
-                        <button 
-                            id="opt-${cardIdx}-${optIdx}"
-                            onclick="checkAnswer(${cardIdx}, ${optIdx}, '${optionLetter}', '${correctLetter}')"
-                            class="option-btn-${cardIdx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 text-gray-800 font-medium transition-all duration-150 flex items-center justify-between cursor-pointer focus:outline-none">
-                            <span>${opt}</span>
-                            <span id="badge-${cardIdx}-${optIdx}" class="text-xs font-bold px-2 py-0.5 rounded hidden"></span>
-                        </button>
-                    `;
+                    return `<button id="daily-opt-${cardIdx}-${optIdx}" onclick="checkAnswer('daily', ${cardIdx}, ${optIdx}, '${optionLetter}', '${correctLetter}')" class="daily-btn-${cardIdx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="daily-badge-${cardIdx}-${optIdx}" class="text-xs font-bold px-2 py-0.5 rounded hidden"></span></button>`;
                 }).join('');
                 
-                const summaryHtml = (item.Summary || '').split('•').filter(s => s.trim()).map(s => 
-                    `<li class="ml-4 list-disc text-sm text-gray-700 mb-1.5">${s.trim()}</li>`
-                ).join('');
+                const summaryHtml = summaryRaw.split('•').filter(s => s.trim()).map(s => `<li class="ml-4 list-disc text-sm text-gray-700 mb-1.5">${s.trim()}</li>`).join('');
 
                 container.innerHTML += `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -89,64 +170,104 @@
                             <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider">${item.Subject || 'GK'}</span>
                             <span class="text-xs text-gray-500 font-medium">${item.Date || ''}</span>
                         </div>
-                        <h2 class="text-lg font-bold text-gray-900 mb-3">${item.Headline || ''}</h2>
+                        <h2 class="text-lg font-bold text-gray-900 mb-3">${headline}</h2>
                         <ul class="mb-4">${summaryHtml}</ul>
-                        
                         <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-100">
                             <h3 class="font-bold text-blue-900 text-xs uppercase tracking-wider mb-2">Practice MCQ</h3>
-                            <p class="font-medium text-sm text-gray-800 mb-3">${item.Question || ''}</p>
-                            
+                            <p class="font-medium text-sm text-gray-800 mb-3">${question}</p>
                             <div class="space-y-1">${optionsHtml}</div>
-                            
-                            <div id="ans-${cardIdx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm font-medium">
-                                ${item.Explanation || ''}
-                            </div>
+                            <div id="daily-ans-${cardIdx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm font-medium">${explanation}</div>
                         </div>
                     </div>`;
             });
         }
 
-        function checkAnswer(cardIdx, selectedOptIdx, selectedLetter, correctLetter) {
-            // Disable all buttons for this card once an answer is selected
-            const buttons = document.querySelectorAll(`.option-btn-${cardIdx}`);
-            buttons.forEach(btn => {
-                btn.disabled = true;
-                btn.classList.remove('hover:bg-blue-50', 'cursor-pointer');
-            });
+        // --- RENDER PYQs ---
+        function renderPYQs() {
+            const container = document.getElementById('pyqContainer');
+            container.innerHTML = '';
+            pyqData.forEach((item, cardIdx) => {
+                const question = getText(item.Question);
+                const optionsRaw = getText(item.Options);
+                const explanation = getText(item.Explanation);
 
-            const selectedBtn = document.getElementById(`opt-${cardIdx}-${selectedOptIdx}`);
-            const selectedBadge = document.getElementById(`badge-${cardIdx}-${selectedOptIdx}`);
+                const optionsArr = optionsRaw.split('|').map(o => o.trim());
+                let correctLetter = "";
+                const match = explanation.match(/(?:Correct|सही|সঠিক):\s*([A-D])/i);
+                if (match) correctLetter = match[1].toUpperCase();
+
+                const optionsHtml = optionsArr.map((opt, optIdx) => {
+                    const optionLetter = opt.charAt(0).toUpperCase();
+                    return `<button id="pyq-opt-${cardIdx}-${optIdx}" onclick="checkAnswer('pyq', ${cardIdx}, ${optIdx}, '${optionLetter}', '${correctLetter}')" class="pyq-btn-${cardIdx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-yellow-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="pyq-badge-${cardIdx}-${optIdx}" class="text-xs font-bold px-2 py-0.5 rounded hidden"></span></button>`;
+                }).join('');
+
+                container.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-sm border border-yellow-300 border-t-4 p-5">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider">${item.Exam}</span>
+                            <span class="text-xs text-gray-500 font-medium">${item.Subject}</span>
+                        </div>
+                        <p class="font-bold text-base text-gray-800 mb-4">${question}</p>
+                        <div class="space-y-1">${optionsHtml}</div>
+                        <div id="pyq-ans-${cardIdx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm font-medium">${explanation}</div>
+                    </div>`;
+            });
+        }
+
+        // --- RENDER STATIC NOTES ---
+        function renderNotes() {
+            const container = document.getElementById('notesContainer');
+            container.innerHTML = '';
+            notesData.forEach(item => {
+                const title = getText(item.Title);
+                const contentRaw = getText(item.Content);
+                const contentHtml = contentRaw.split('•').filter(s => s.trim()).map(s => `<li class="ml-4 list-disc text-sm text-gray-800 mb-2">${s.trim()}</li>`).join('');
+
+                container.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-sm border border-purple-200 border-l-4 p-5">
+                        <span class="bg-purple-100 text-purple-800 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider mb-3 inline-block">${item.Subject}</span>
+                        <h2 class="text-lg font-bold text-gray-900 mb-3">${title}</h2>
+                        <ul class="mt-2">${contentHtml}</ul>
+                    </div>`;
+            });
+        }
+
+        // --- ANSWER CHECKER LOGIC ---
+        function checkAnswer(type, cardIdx, selectedOptIdx, selectedLetter, correctLetter) {
+            const buttons = document.querySelectorAll(`.${type}-btn-${cardIdx}`);
+            buttons.forEach(btn => { btn.disabled = true; });
+
+            const selectedBtn = document.getElementById(`${type}-opt-${cardIdx}-${selectedOptIdx}`);
+            const selectedBadge = document.getElementById(`${type}-badge-${cardIdx}-${selectedOptIdx}`);
             selectedBadge.classList.remove('hidden');
 
             if (selectedLetter === correctLetter && correctLetter !== "") {
-                // Selected option is CORRECT
                 selectedBtn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex items-center justify-between";
-                selectedBadge.innerText = "✓ Correct";
+                selectedBadge.innerText = "✓";
                 selectedBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white";
             } else {
-                // Selected option is INCORRECT
                 selectedBtn.className = "w-full text-left p-3 border-2 border-red-500 rounded-lg bg-red-100 text-sm mb-2 text-red-900 font-medium flex items-center justify-between";
-                selectedBadge.innerText = "✕ Wrong";
+                selectedBadge.innerText = "✕";
                 selectedBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-600 text-white";
 
-                // Highlight the correct answer in green
                 buttons.forEach((btn, idx) => {
                     const text = btn.querySelector('span').innerText.trim();
                     if (text.startsWith(correctLetter) && correctLetter !== "") {
                         btn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex items-center justify-between";
-                        const badge = document.getElementById(`badge-${cardIdx}-${idx}`);
+                        const badge = document.getElementById(`${type}-badge-${cardIdx}-${idx}`);
                         badge.classList.remove('hidden');
-                        badge.innerText = "✓ Correct Answer";
+                        badge.innerText = "✓";
                         badge.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white";
                     }
                 });
             }
-
-            // Automatically reveal explanation
-            document.getElementById(`ans-${cardIdx}`).classList.remove('hidden');
+            document.getElementById(`${type}-ans-${cardIdx}`).classList.remove('hidden');
         }
 
-        loadContent();
+        // Initialize App
+        loadDailyContent();
+        renderPYQs();
+        renderNotes();
     </script>
 </body>
 </html>
