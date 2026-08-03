@@ -9,93 +9,63 @@
         .hidden { display: none; }
         .active-tab { border-bottom: 4px solid #3b82f6; color: #1d4ed8; font-weight: bold; }
         .inactive-tab { color: #6b7280; font-weight: 500; }
+        .cheat-sheet-card { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans pb-10">
     
-    <!-- App Header with Language Selector -->
+    <!-- App Header -->
     <header class="bg-blue-700 text-white p-4 shadow-md sticky top-0 z-20 flex justify-between items-center">
         <div>
             <h1 class="text-xl font-bold">Daily GK & GS</h1>
             <p class="text-xs text-blue-200">The Complete Exam Portal</p>
         </div>
-        
         <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-blue-800 text-white text-xs font-bold py-1.5 px-2 rounded-lg border border-blue-500 focus:outline-none">
             <option value="en">English</option>
-            <option value="hi">हिन्दी (Hindi)</option>
-            <option value="bn">বাংলা (Bengali)</option>
+            <option value="hi">हिन्दी</option>
+            <option value="bn">বাংলা</option>
         </select>
     </header>
 
     <!-- Navigation Tabs -->
     <nav class="bg-white shadow-sm sticky top-[68px] z-10 border-b border-gray-200">
         <ul class="flex justify-around text-sm">
-            <li class="flex-1 text-center py-3 cursor-pointer active-tab transition-all" id="tab-daily" onclick="switchTab('daily')">📰 Daily GK</li>
+            <li class="flex-1 text-center py-3 cursor-pointer active-tab transition-all" id="tab-daily" onclick="switchTab('daily')">📰 Daily</li>
             <li class="flex-1 text-center py-3 cursor-pointer inactive-tab transition-all" id="tab-pyq" onclick="switchTab('pyq')">📜 PYQs</li>
-            <li class="flex-1 text-center py-3 cursor-pointer inactive-tab transition-all" id="tab-notes" onclick="switchTab('notes')">📚 Notes</li>
+            <li class="flex-1 text-center py-3 cursor-pointer inactive-tab transition-all" id="tab-notes" onclick="switchTab('notes')">⏱️ Cheat Sheets</li>
         </ul>
     </nav>
 
     <!-- Content Containers -->
     <main class="p-4 max-w-2xl mx-auto space-y-5">
-        <!-- 1. Daily GK Container -->
-        <div id="dailyContainer" class="block space-y-5">
-            <div class="text-center text-gray-500 py-10 font-medium">Loading today's news...</div>
-        </div>
-
-        <!-- 2. PYQ Container -->
-        <div id="pyqContainer" class="hidden space-y-5"></div>
-
-        <!-- 3. Study Notes Container -->
-        <div id="notesContainer" class="hidden space-y-5"></div>
+        <div id="dailyContainer" class="block space-y-5"><div class="text-center text-gray-500 py-10 font-medium">Loading Daily News...</div></div>
+        <div id="pyqContainer" class="hidden space-y-5"><div class="text-center text-gray-500 py-10 font-medium">Loading PYQ Bank...</div></div>
+        <div id="notesContainer" class="hidden space-y-5"><div class="text-center text-gray-500 py-10 font-medium">Loading Cheat Sheets...</div></div>
     </main>
 
     <script>
         let currentLang = 'en';
         let dailyData = [];
+        let pyqData = [];
+        let notesData = [];
 
-        // --- HARDCODED STUDY MATERIAL DATA ---
-        // You can add as many previous year questions here as you want!
-        const pyqData = [
+        const defaultPYQs = [
             {
-                "Exam": "UPSC CSE Prelims 2023",
-                "Subject": "Polity",
-                "Question": {
-                    "en": "In essence, what does 'Due Process of Law' mean?",
-                    "hi": "संक्षेप में, 'कानून की उचित प्रक्रिया' (Due Process of Law) का क्या अर्थ है?",
-                    "bn": "সংক্ষেপে, 'Due Process of Law' বলতে কী বোঝায়?"
-                },
-                "Options": {
-                    "en": "A) The principle of natural justice | B) The procedure established by law | C) Fair application of law | D) Equality before law",
-                    "hi": "A) प्राकृतिक न्याय का सिद्धांत | B) कानून द्वारा स्थापित प्रक्रिया | C) कानून का उचित अनुप्रयोग | D) कानून के समक्ष समानता",
-                    "bn": "A) প্রাকৃতিক ন্যায়ের নীতি | B) আইন দ্বারা প্রতিষ্ঠিত পদ্ধতি | C) আইনের ন্যায্য প্রয়োগ | D) আইনের দৃষ্টিতে সমতা"
-                },
-                "Explanation": {
-                    "en": "Correct: C. It ensures that laws are inherently fair, just, and not arbitrary.",
-                    "hi": "सही: C. यह सुनिश्चित करता है कि कानून स्वाभाविक रूप से उचित, न्यायसंगत और मनमाना नहीं हैं।",
-                    "bn": "সঠিক: C. এটি নিশ্চিত করে যে আইনগুলি স্বভাবতই ন্যায্য এবং স্বেচ্ছাচারী নয়।"
-                }
+                "Exam": "UPSC CSE 2023", "Subject": "Polity",
+                "Question": {"en": "What does 'Due Process of Law' mean?", "hi": "'कानून की उचित प्रक्रिया' का क्या अर्थ है?", "bn": "'Due Process of Law' বলতে কী বোঝায়?"},
+                "Options": {"en": "A) Natural justice | B) Procedure established by law | C) Fair application of law | D) Equality before law", "hi": "A) प्राकृतिक न्याय | B) कानून द्वारा स्थापित प्रक्रिया | C) कानून का उचित अनुप्रयोग | D) समानता", "bn": "A) প্রাকৃতিক ন্যায় | B) আইন দ্বারা প্রতিষ্ঠিত পদ্ধতি | C) আইনের ন্যায্য প্রয়োগ | D) সমতা"},
+                "Explanation": {"en": "Correct: C. It ensures laws are fair.", "hi": "सही: C. यह सुनिश्चित करता है कि कानून उचित हैं।", "bn": "সঠিক: C. এটি নিশ্চিত করে যে আইনগুলি ন্যায্য।"}
             }
         ];
 
-        // Core Static Notes
-        const notesData = [
+        const defaultNotes = [
             {
-                "Subject": "Indian Polity",
-                "Title": {
-                    "en": "Fundamental Rights (Articles 14-18)",
-                    "hi": "मौलिक अधिकार (अनुच्छेद 14-18)",
-                    "bn": "মৌলিক অধিকার (অনুচ্ছেদ ১৪-১৮)"
-                },
-                "Content": {
-                    "en": "• Art 14: Equality before the law.\n• Art 15: Prohibition of discrimination.\n• Art 16: Equality of opportunity in public employment.\n• Art 17: Abolition of Untouchability.\n• Art 18: Abolition of titles.",
-                    "hi": "• अनु 14: कानून के समक्ष समानता।\n• अनु 15: भेदभाव का निषेध।\n• अनु 16: सार्वजनिक रोजगार में अवसर की समानता।\n• अनु 17: अस्पृश्यता का अंत।\n• अनु 18: उपाधियों का अंत।",
-                    "bn": "• অনু ১৪: আইনের দৃষ্টিতে সমতা।\n• অনু ১৫: বৈষম্য নিষিদ্ধকরণ।\n• অনু ১৬: সরকারি চাকরিতে সমান সুযোগ।\n• অনু ১৭: অস্পৃশ্যতা বিলোপ।\n• অনু ১৮: খেতাব বিলোপ।"
-                }
+                "Subject": "Polity Cheat Sheet", "Time": "1 Min Read",
+                "Title": {"en": "Fundamental Rights (Arts 14-18)", "hi": "मौलिक अधिकार (अनु 14-18)", "bn": "মৌলিক অধিকার (অনু ১৪-১৮)"},
+                "Content": {"en": "• Art 14: Equality\n• Art 15: No discrimination\n• Art 16: Public employment equal opportunity\n• Art 17: End of Untouchability\n• Art 18: Abolition of titles", "hi": "• अनु 14: समानता\n• अनु 15: कोई भेदभाव नहीं\n• अनु 16: रोजगार में समान अवसर\n• अनु 17: अस्पृश्यता का अंत\n• अनु 18: उपाधियों का अंत", "bn": "• অনু ১৪: সমতা\n• অনু ১৫: বৈষম্য নেই\n• অনু ১৬: কর্মসংস্থানে সমান সুযোগ\n• অনু ১৭: অস্পৃश्यতা বিলোপ\n• অনু ১৮: খেতাব বিলোপ"}
             }
         ];
 
-        // --- CORE FUNCTIONS ---
         function getText(field) {
             if (!field) return '';
             if (typeof field === 'string') return field; 
@@ -104,170 +74,145 @@
 
         function changeLanguage(lang) {
             currentLang = lang;
-            renderDaily();
-            renderPYQs();
-            renderNotes();
+            renderDaily(); renderPYQs(); renderNotes();
         }
 
         function switchTab(tabId) {
-            document.getElementById('tab-daily').className = "flex-1 text-center py-3 cursor-pointer transition-all " + (tabId === 'daily' ? 'active-tab' : 'inactive-tab');
-            document.getElementById('tab-pyq').className = "flex-1 text-center py-3 cursor-pointer transition-all " + (tabId === 'pyq' ? 'active-tab' : 'inactive-tab');
-            document.getElementById('tab-notes').className = "flex-1 text-center py-3 cursor-pointer transition-all " + (tabId === 'notes' ? 'active-tab' : 'inactive-tab');
-
-            document.getElementById('dailyContainer').classList.add('hidden');
-            document.getElementById('pyqContainer').classList.add('hidden');
-            document.getElementById('notesContainer').classList.add('hidden');
-
-            document.getElementById(tabId + 'Container').classList.remove('hidden');
+            ['daily', 'pyq', 'notes'].forEach(id => {
+                document.getElementById(`tab-${id}`).className = `flex-1 text-center py-3 cursor-pointer transition-all ${tabId === id ? 'active-tab' : 'inactive-tab'}`;
+                document.getElementById(`${id}Container`).classList.add('hidden');
+            });
+            document.getElementById(`${tabId}Container`).classList.remove('hidden');
         }
 
-        // --- RENDER DAILY NEWS (From AI File) ---
-        async function loadDailyContent() {
+        async function fetchJSON(url, defaultData) {
             try {
-                const response = await fetch('./latest_news.json?v=' + new Date().getTime());
-                if (response.ok) {
-                    const fetchedData = await response.json();
-                    if (Array.isArray(fetchedData) && fetchedData.length > 0) {
-                        dailyData = fetchedData;
-                    }
+                const res = await fetch(url + '?v=' + new Date().getTime());
+                if (res.ok) {
+                    const data = await res.json();
+                    return Array.isArray(data) && data.length > 0 ? data : defaultData;
                 }
-            } catch (error) {
-                console.log("Waiting for AI data...");
+            } catch (e) {}
+            return defaultData;
+        }
+
+        async function loadAllData() {
+            dailyData = await fetchJSON('./latest_news.json', []);
+            pyqData = await fetchJSON('./pyq_bank.json', defaultPYQs);
+            notesData = await fetchJSON('./cheat_sheets.json', defaultNotes);
+            renderDaily(); renderPYQs(); renderNotes();
+        }
+
+        // IMPROVED ANSWER PARSER: Looks for option letters anywhere in the explanation text
+        function parseCorrectLetter(explanationText, optionsArray) {
+            const expUpper = explanationText.toUpperCase();
+            
+            // 1. Check if a letter A, B, C, or D is explicitly stated near "CORRECT" or "ANSWER"
+            for (let letter of ['A', 'B', 'C', 'D']) {
+                if (expUpper.includes(letter + ')') || expUpper.includes('OPTION ' + letter) || expUpper.includes(letter + ' IS CORRECT')) {
+                    return letter;
+                }
             }
-            renderDaily();
+
+            // 2. Fallback: Match any isolated letter A-D mentioned as the correct option
+            const match = expUpper.match(/\b([A-D])\b/);
+            if (match) return match[1];
+
+            // 3. Intelligent fallback: check which option text matches words in the explanation
+            for (let opt of optionsArray) {
+                const optLetter = opt.charAt(0).toUpperCase();
+                const optCoreText = opt.substring(2).trim().toLowerCase();
+                if (optCoreText.length > 3 && explanationText.toLowerCase().includes(optCoreText)) {
+                    return optLetter;
+                }
+            }
+            return 'A'; // Ultimate fallback
         }
 
         function renderDaily() {
             const container = document.getElementById('dailyContainer');
-            if(dailyData.length === 0) {
-                 container.innerHTML = '<div class="text-center py-10 font-bold text-gray-500">Wait for your GitHub Action to finish running!</div>';
-                 return;
-            }
+            if(dailyData.length === 0) { container.innerHTML = '<div class="text-center py-10 font-bold text-gray-500">No news today!</div>'; return; }
             container.innerHTML = '';
-            
-            dailyData.forEach((item, cardIdx) => {
-                const headline = getText(item.Headline);
-                const summaryRaw = getText(item.Summary);
-                const question = getText(item.Question);
-                const optionsRaw = getText(item.Options);
-                const explanation = getText(item.Explanation);
+            dailyData.forEach((item, idx) => {
+                const opts = getText(item.Options).split('|').map(o => o.trim());
+                const expl = getText(item.Explanation);
+                const correct = parseCorrectLetter(expl, opts);
 
-                const optionsArr = optionsRaw.split('|').map(o => o.trim());
-                let correctLetter = "";
-                const match = explanation.match(/(?:Correct|सही|সঠিক):\s*([A-D])/i);
-                if (match) correctLetter = match[1].toUpperCase();
-
-                const optionsHtml = optionsArr.map((opt, optIdx) => {
-                    const optionLetter = opt.charAt(0).toUpperCase();
-                    return `<button id="daily-opt-${cardIdx}-${optIdx}" onclick="checkAnswer('daily', ${cardIdx}, ${optIdx}, '${optionLetter}', '${correctLetter}')" class="daily-btn-${cardIdx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="daily-badge-${cardIdx}-${optIdx}" class="text-xs font-bold px-2 py-0.5 rounded hidden"></span></button>`;
-                }).join('');
+                const optHtml = opts.map((opt, oIdx) => `<button id="d-opt-${idx}-${oIdx}" onclick="check('daily', ${idx}, ${oIdx}, '${opt.charAt(0).toUpperCase()}', '${correct}')" class="daily-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="d-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`).join('');
                 
-                const summaryHtml = summaryRaw.split('•').filter(s => s.trim()).map(s => `<li class="ml-4 list-disc text-sm text-gray-700 mb-1.5">${s.trim()}</li>`).join('');
-
                 container.innerHTML += `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider">${item.Subject || 'GK'}</span>
-                            <span class="text-xs text-gray-500 font-medium">${item.Date || ''}</span>
-                        </div>
-                        <h2 class="text-lg font-bold text-gray-900 mb-3">${headline}</h2>
-                        <ul class="mb-4">${summaryHtml}</ul>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase">${item.Subject || 'GK'}</span>
+                        <h2 class="text-lg font-bold text-gray-900 mt-2 mb-2">${getText(item.Headline)}</h2>
+                        <ul class="mb-4">${getText(item.Summary).split('•').filter(s=>s.trim()).map(s=>`<li class="ml-4 list-disc text-sm text-gray-700">${s.trim()}</li>`).join('')}</ul>
                         <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-100">
-                            <h3 class="font-bold text-blue-900 text-xs uppercase tracking-wider mb-2">Practice MCQ</h3>
-                            <p class="font-medium text-sm text-gray-800 mb-3">${question}</p>
-                            <div class="space-y-1">${optionsHtml}</div>
-                            <div id="daily-ans-${cardIdx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm font-medium">${explanation}</div>
+                            <p class="font-medium text-sm text-gray-800 mb-3">${getText(item.Question)}</p>
+                            ${optHtml}
+                            <div id="d-ans-${idx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm">${expl}</div>
                         </div>
                     </div>`;
             });
         }
 
-        // --- RENDER PYQs ---
         function renderPYQs() {
             const container = document.getElementById('pyqContainer');
             container.innerHTML = '';
-            pyqData.forEach((item, cardIdx) => {
-                const question = getText(item.Question);
-                const optionsRaw = getText(item.Options);
-                const explanation = getText(item.Explanation);
+            pyqData.forEach((item, idx) => {
+                const opts = getText(item.Options).split('|').map(o => o.trim());
+                const expl = getText(item.Explanation);
+                const correct = parseCorrectLetter(expl, opts);
 
-                const optionsArr = optionsRaw.split('|').map(o => o.trim());
-                let correctLetter = "";
-                const match = explanation.match(/(?:Correct|सही|সঠিক):\s*([A-D])/i);
-                if (match) correctLetter = match[1].toUpperCase();
-
-                const optionsHtml = optionsArr.map((opt, optIdx) => {
-                    const optionLetter = opt.charAt(0).toUpperCase();
-                    return `<button id="pyq-opt-${cardIdx}-${optIdx}" onclick="checkAnswer('pyq', ${cardIdx}, ${optIdx}, '${optionLetter}', '${correctLetter}')" class="pyq-btn-${cardIdx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-yellow-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="pyq-badge-${cardIdx}-${optIdx}" class="text-xs font-bold px-2 py-0.5 rounded hidden"></span></button>`;
-                }).join('');
+                const optHtml = opts.map((opt, oIdx) => `<button id="p-opt-${idx}-${oIdx}" onclick="check('pyq', ${idx}, ${oIdx}, '${opt.charAt(0).toUpperCase()}', '${correct}')" class="pyq-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-yellow-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="p-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`).join('');
 
                 container.innerHTML += `
                     <div class="bg-white rounded-xl shadow-sm border border-yellow-300 border-t-4 p-5">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider">${item.Exam}</span>
-                            <span class="text-xs text-gray-500 font-medium">${item.Subject}</span>
-                        </div>
-                        <p class="font-bold text-base text-gray-800 mb-4">${question}</p>
-                        <div class="space-y-1">${optionsHtml}</div>
-                        <div id="pyq-ans-${cardIdx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm font-medium">${explanation}</div>
+                        <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded uppercase">${item.Exam}</span>
+                        <p class="font-bold text-base text-gray-800 mt-3 mb-4">${getText(item.Question)}</p>
+                        ${optHtml}
+                        <div id="p-ans-${idx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm">${expl}</div>
                     </div>`;
             });
         }
 
-        // --- RENDER STATIC NOTES ---
         function renderNotes() {
             const container = document.getElementById('notesContainer');
             container.innerHTML = '';
             notesData.forEach(item => {
-                const title = getText(item.Title);
-                const contentRaw = getText(item.Content);
-                const contentHtml = contentRaw.split('•').filter(s => s.trim()).map(s => `<li class="ml-4 list-disc text-sm text-gray-800 mb-2">${s.trim()}</li>`).join('');
-
                 container.innerHTML += `
-                    <div class="bg-white rounded-xl shadow-sm border border-purple-200 border-l-4 p-5">
-                        <span class="bg-purple-100 text-purple-800 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider mb-3 inline-block">${item.Subject}</span>
-                        <h2 class="text-lg font-bold text-gray-900 mb-3">${title}</h2>
-                        <ul class="mt-2">${contentHtml}</ul>
+                    <div class="cheat-sheet-card rounded-xl shadow-sm border border-blue-200 p-5 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">${item.Time || 'Cheat Sheet'}</div>
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase">${item.Subject}</span>
+                        <h2 class="text-xl font-extrabold text-gray-900 mt-2 mb-3 leading-tight">${getText(item.Title)}</h2>
+                        <ul class="mt-2 space-y-2">${getText(item.Content).split('•').filter(s=>s.trim()).map(s=>`<li class="flex items-start text-sm text-gray-800 font-medium"><span class="mr-2 text-blue-500">⚡</span>${s.trim()}</li>`).join('')}</ul>
                     </div>`;
             });
         }
 
-        // --- ANSWER CHECKER LOGIC ---
-        function checkAnswer(type, cardIdx, selectedOptIdx, selectedLetter, correctLetter) {
-            const buttons = document.querySelectorAll(`.${type}-btn-${cardIdx}`);
-            buttons.forEach(btn => { btn.disabled = true; });
+        function check(type, idx, oIdx, sel, cor) {
+            const prefix = type === 'daily' ? 'd' : 'p';
+            document.querySelectorAll(`.${type}-btn-${idx}`).forEach(btn => btn.disabled = true);
+            const sBtn = document.getElementById(`${prefix}-opt-${idx}-${oIdx}`);
+            const sBad = document.getElementById(`${prefix}-badge-${idx}-${oIdx}`);
+            sBad.classList.remove('hidden');
 
-            const selectedBtn = document.getElementById(`${type}-opt-${cardIdx}-${selectedOptIdx}`);
-            const selectedBadge = document.getElementById(`${type}-badge-${cardIdx}-${selectedOptIdx}`);
-            selectedBadge.classList.remove('hidden');
-
-            if (selectedLetter === correctLetter && correctLetter !== "") {
-                selectedBtn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex items-center justify-between";
-                selectedBadge.innerText = "✓";
-                selectedBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white";
+            if (sel === cor && cor !== "") {
+                sBtn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex justify-between";
+                sBad.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white"; sBad.innerText = "✓";
             } else {
-                selectedBtn.className = "w-full text-left p-3 border-2 border-red-500 rounded-lg bg-red-100 text-sm mb-2 text-red-900 font-medium flex items-center justify-between";
-                selectedBadge.innerText = "✕";
-                selectedBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-600 text-white";
-
-                buttons.forEach((btn, idx) => {
-                    const text = btn.querySelector('span').innerText.trim();
-                    if (text.startsWith(correctLetter) && correctLetter !== "") {
-                        btn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex items-center justify-between";
-                        const badge = document.getElementById(`${type}-badge-${cardIdx}-${idx}`);
-                        badge.classList.remove('hidden');
-                        badge.innerText = "✓";
-                        badge.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white";
+                sBtn.className = "w-full text-left p-3 border-2 border-red-500 rounded-lg bg-red-100 text-sm mb-2 text-red-900 font-medium flex justify-between";
+                sBad.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-600 text-white"; sBad.innerText = "✕";
+                document.querySelectorAll(`.${type}-btn-${idx}`).forEach((btn, i) => {
+                    if (btn.querySelector('span').innerText.trim().startsWith(cor) && cor !== "") {
+                        btn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex justify-between";
+                        const b = document.getElementById(`${prefix}-badge-${idx}-${i}`);
+                        b.classList.remove('hidden'); b.className = "text-xs font-bold px-2 py-0.5 rounded bg-green-600 text-white"; b.innerText = "✓";
                     }
                 });
             }
-            document.getElementById(`${type}-ans-${cardIdx}`).classList.remove('hidden');
+            document.getElementById(`${prefix}-ans-${idx}`).classList.remove('hidden');
         }
 
-        // Initialize App
-        loadDailyContent();
-        renderPYQs();
-        renderNotes();
+        loadAllData();
     </script>
 </body>
 </html>
