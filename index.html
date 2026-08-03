@@ -1,14 +1,101 @@
-Daily GK & GS Prep
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily GK & GS Prep</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans pb-10">
     
-    
-    
-    
+    <!-- App Header -->
+    <header class="bg-blue-700 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center">
+        <h1 class="text-xl font-bold">Daily GK & GS Tracker</h1>
+        <span class="text-xs bg-blue-800 px-2 py-1 rounded font-semibold">100% Free</span>
+    </header>
 
+    <!-- Main Content Feed -->
+    <main id="feedContainer" class="p-4 max-w-2xl mx-auto space-y-5">
+        <div class="text-center text-gray-500 py-10 font-medium">Loading study material...</div>
+    </main>
 
-    
-        Daily GK & GS Tracker
-        100% Free
-    
+    <script>
+        // Default content so the app NEVER stays stuck on "Loading..."
+        const defaultData = [
+            {
+                "Date": "2026-08-03",
+                "Subject": "Welcome",
+                "Headline": "Welcome to your Free GK & GS Prep Platform!",
+                "Summary": "• This app updates daily at 7:00 AM IST with news-based questions.\n• Built for UPSC, SSC CGL, and Railway aspirants.\n• Select 'Show Answer' below each practice MCQ to reveal explanations.",
+                "Question": "When does this app automatically update with new current affairs?",
+                "Options": "A) Every month | B) Every morning at 7:00 AM IST | C) Once a week | D) Never",
+                "Explanation": "Correct Answer: B. The automated pipeline fetches news and creates MCQs every morning.",
+                "Source_Link": "https://pib.gov.in"
+            }
+        ];
 
-    
-        Loading today's study material...
+        async function loadContent() {
+            let data = defaultData;
+
+            try {
+                // Try fetching live news JSON file
+                const response = await fetch('./latest_news.json');
+                if (response.ok) {
+                    const fetchedData = await response.json();
+                    if (Array.isArray(fetchedData) && fetchedData.length > 0) {
+                        data = fetchedData;
+                    }
+                }
+            } catch (error) {
+                console.log('Using fallback content until first automated run complete.');
+            }
+
+            renderFeed(data);
+        }
+
+        function renderFeed(data) {
+            const container = document.getElementById('feedContainer');
+            container.innerHTML = '';
+
+            data.forEach((item, index) => {
+                const optionsHtml = (item.Options || '').split('|').map(opt => 
+                    `<div class="p-2.5 border rounded-lg bg-gray-50 text-sm mb-2 text-gray-800 font-medium">${opt.trim()}</div>`
+                ).join('');
+                
+                const summaryHtml = (item.Summary || '').split('•').filter(s => s.trim()).map(s => 
+                    `<li class="ml-4 list-disc text-sm text-gray-700 mb-1.5">${s.trim()}</li>`
+                ).join('');
+
+                container.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider">${item.Subject || 'GK'}</span>
+                            <span class="text-xs text-gray-500 font-medium">${item.Date || ''}</span>
+                        </div>
+                        <h2 class="text-lg font-bold text-gray-900 mb-3">${item.Headline || ''}</h2>
+                        <ul class="mb-4">${summaryHtml}</ul>
+                        
+                        <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-100">
+                            <h3 class="font-bold text-blue-900 text-xs uppercase tracking-wider mb-2">Practice MCQ</h3>
+                            <p class="font-medium text-sm text-gray-800 mb-3">${item.Question || ''}</p>
+                            <div>${optionsHtml}</div>
+                            
+                            <button onclick="document.getElementById('ans-${index}').classList.toggle('hidden')" class="mt-2 text-blue-700 font-bold text-xs uppercase tracking-wider hover:underline focus:outline-none">
+                                Reveal Answer & Explanation
+                            </button>
+                            
+                            <div id="ans-${index}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm font-medium">
+                                ${item.Explanation || ''}
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        loadContent();
+    </script>
+</body>
+</html>
