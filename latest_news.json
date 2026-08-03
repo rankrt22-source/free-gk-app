@@ -1,0 +1,12 @@
+[
+  {
+    "Date": "2026-08-03",
+    "Subject": "Welcome",
+    "Headline": "Welcome to your Free GK & GS App!",
+    "Summary": "• This platform automatically generates daily MCQs and current affairs.\n• Content updates every morning at 7:00 AM IST.\n• Study hard and share with fellow aspirants!",
+    "Question": "When does your app automatically update with new news?",
+    "Options": "A) Never | B) Every month | C) Every morning at 7:00 AM IST | D) Once a year",
+    "Explanation": "Correct: C. Your automated GitHub pipeline fetches PIB news every morning.",
+    "Source_Link": "#"
+  }
+]
