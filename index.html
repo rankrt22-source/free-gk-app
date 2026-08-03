@@ -60,10 +60,10 @@
                 text = field[currentLang] || field['en'] || '';
             }
             
-            // SAFETY FIX: If the AI returns an array or object, force it to string so .split() never crashes
-            if (Array.isArray(text)) return text.join(' ');
+            // FIX: If the AI output an array, join it with a pipe so our splitter catches it!
+            if (Array.isArray(text)) return text.join(' | ');
             if (typeof text === 'object') return JSON.stringify(text);
-            return String(text);
+            return String(text).trim();
         }
 
         function changeLanguage(lang) {
@@ -100,35 +100,56 @@
         }
 
         function renderAll() {
-            // SAFETY FIX: Isolate each rendering function so one failure doesn't crash the others
-            try { renderDaily(); } catch(e) { console.error("Error in renderDaily:", e); }
-            try { renderPYQs(); } catch(e) { console.error("Error in renderPYQs:", e); }
-            try { renderNotes(); } catch(e) { console.error("Error in renderNotes:", e); }
+            try { renderDaily(); } catch(e) { console.error(e); }
+            try { renderPYQs(); } catch(e) { console.error(e); }
+            try { renderNotes(); } catch(e) { console.error(e); }
         }
 
+        // ULTIMATE OPTION SPLITTER
         function parseOptions(optionsRaw) {
             if (!optionsRaw) return [];
-            let optStr = String(optionsRaw);
-            if (optStr.includes('|')) return optStr.split('|').map(o => o.trim());
-            const matches = optStr.match(/[A-D]\)[^A-D]*/g);
-            if (matches && matches.length > 0) return matches.map(o => o.trim());
-            return [optStr];
+            let optStr = String(optionsRaw).trim();
+            
+            // 1. Catch Pipes ( | )
+            if (optStr.includes('|')) return optStr.split('|').map(o => o.trim()).filter(Boolean);
+            
+            // 2. Catch Newlines
+            if (optStr.includes('\n')) {
+                let lines = optStr.split('\n').map(o => o.trim()).filter(Boolean);
+                if (lines.length > 1) return lines.map(o => o.replace(/^(?:[A-D1-4][\)\.]|\([A-D1-4]\))\s*/i, ''));
+            }
+
+            // 3. Catch A), B), C), D) or A., B., C., D.
+            const matches = optStr.match(/(?:[A-D][\)\.]|\([A-D]\))\s*[\s\S]*?(?=(?:[A-D][\)\.]|\([A-D]\))|$)/gi);
+            if (matches && matches.length > 1) {
+                return matches.map(o => o.replace(/^(?:[A-D][\)\.]|\([A-D]\))\s*/i, '').trim());
+            }
+
+            // 4. Catch 1), 2), 3), 4)
+            const numMatches = optStr.match(/(?:[1-4][\)\.]|\([1-4]\))\s*[\s\S]*?(?=(?:[1-4][\)\.]|\([1-4]\))|$)/gi);
+            if (numMatches && numMatches.length > 1) {
+                return numMatches.map(o => o.replace(/^(?:[1-4][\)\.]|\([1-4]\))\s*/i, '').trim());
+            }
+
+            // 5. Catch double/triple spacing (AI sometimes just spaces them out)
+            if (optStr.match(/\s{2,}/)) {
+                return optStr.split(/\s{2,}/).map(o => o.trim()).filter(Boolean);
+            }
+
+            return [optStr]; // Fallback
         }
 
         function parseCorrectLetter(explanationText, optionsArray) {
             if (!explanationText) return 'A';
             const expUpper = String(explanationText).toUpperCase();
+            
             for (let letter of ['A', 'B', 'C', 'D']) {
-                if (expUpper.includes(letter + ')') || expUpper.includes('OPTION ' + letter) || expUpper.includes('CORRECT: ' + letter) || expUpper.includes('सही: ' + letter)) return letter;
+                if (expUpper.includes(letter + ')') || expUpper.includes(letter + '.') || expUpper.includes('OPTION ' + letter) || expUpper.includes('CORRECT: ' + letter) || expUpper.includes('सही: ' + letter)) return letter;
             }
-            if (expUpper.includes('BOTH') || expUpper.includes('दोनों') || expUpper.includes('উভয়')) {
-                for (let opt of optionsArray) {
-                    if (String(opt).toUpperCase().includes('BOTH') || String(opt).includes('दोनों')) return String(opt).charAt(0).toUpperCase();
-                }
-            }
+            
             const match = expUpper.match(/\b([A-D])\b/);
             if (match) return match[1];
-            return optionsArray.length > 0 ? String(optionsArray[0]).charAt(0).toUpperCase() : 'A';
+            return 'A'; 
         }
 
         function renderDaily() {
@@ -137,14 +158,14 @@
             container.innerHTML = '';
             
             dailyData.forEach((item, idx) => {
-                try { // SAFETY FIX: Protect each individual item
+                try {
                     const opts = parseOptions(getText(item.Options));
                     const expl = getText(item.Explanation);
                     const correct = parseCorrectLetter(expl, opts);
 
                     const optHtml = opts.map((opt, oIdx) => {
-                        const optLetter = opt ? String(opt).charAt(0).toUpperCase() : 'A';
-                        return `<button id="d-opt-${idx}-${oIdx}" onclick="check('daily', ${idx}, ${oIdx}, '${optLetter}', '${correct}')" class="daily-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="d-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`;
+                        const optLetter = String.fromCharCode(65 + oIdx); // Automatically assigns A, B, C, D
+                        return `<button id="d-opt-${idx}-${oIdx}" onclick="check('daily', ${idx}, ${oIdx}, '${optLetter}', '${correct}')" class="daily-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-blue-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span class="flex-1"><strong class="mr-2 text-blue-600">${optLetter}.</strong> ${opt}</span><span id="d-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded ml-2 whitespace-nowrap"></span></button>`;
                     }).join('');
                     
                     const summaryItems = getText(item.Summary).split('•').filter(s=>s.trim()).map(s=>`<li class="ml-4 list-disc text-sm text-gray-700">${s.trim()}</li>`).join('');
@@ -160,7 +181,7 @@
                                 <div id="d-ans-${idx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm">${expl}</div>
                             </div>
                         </div>`;
-                } catch(e) { console.error('Failed to render news item:', e); }
+                } catch(e) {}
             });
         }
 
@@ -170,14 +191,14 @@
             container.innerHTML = '';
             
             pyqData.forEach((item, idx) => {
-                try { // SAFETY FIX: Protect each individual PYQ
+                try {
                     const opts = parseOptions(getText(item.Options));
                     const expl = getText(item.Explanation);
                     const correct = parseCorrectLetter(expl, opts);
 
                     const optHtml = opts.map((opt, oIdx) => {
-                        const optLetter = opt ? String(opt).charAt(0).toUpperCase() : 'A';
-                        return `<button id="p-opt-${idx}-${oIdx}" onclick="check('pyq', ${idx}, ${oIdx}, '${optLetter}', '${correct}')" class="pyq-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-yellow-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span>${opt}</span><span id="p-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded"></span></button>`;
+                        const optLetter = String.fromCharCode(65 + oIdx); // Automatically assigns A, B, C, D
+                        return `<button id="p-opt-${idx}-${oIdx}" onclick="check('pyq', ${idx}, ${oIdx}, '${optLetter}', '${correct}')" class="pyq-btn-${idx} w-full text-left p-3 border border-gray-200 rounded-lg bg-white hover:bg-yellow-50 text-sm mb-2 font-medium flex justify-between focus:outline-none"><span class="flex-1"><strong class="mr-2 text-yellow-600">${optLetter}.</strong> ${opt}</span><span id="p-badge-${idx}-${oIdx}" class="hidden text-xs font-bold px-2 py-0.5 rounded ml-2 whitespace-nowrap"></span></button>`;
                     }).join('');
 
                     container.innerHTML += `
@@ -187,7 +208,7 @@
                             ${optHtml}
                             <div id="p-ans-${idx}" class="hidden mt-3 p-3 bg-green-50 border border-green-200 text-green-900 rounded-lg text-sm">${expl}</div>
                         </div>`;
-                } catch(e) { console.error('Failed to render PYQ item:', e); }
+                } catch(e) {}
             });
         }
 
@@ -197,7 +218,7 @@
             container.innerHTML = '';
             
             notesData.forEach((item) => {
-                try { // SAFETY FIX: Protect each individual Cheat Sheet
+                try {
                     const contentItems = getText(item.Content).split('•').filter(s=>s.trim()).map(s=>`<li class="flex items-start text-sm text-gray-800 font-medium"><span class="mr-2 text-blue-500">⚡</span>${s.trim()}</li>`).join('');
 
                     container.innerHTML += `
@@ -207,7 +228,7 @@
                             <h2 class="text-xl font-extrabold text-gray-900 mt-2 mb-3 leading-tight">${getText(item.Title)}</h2>
                             <ul class="mt-2 space-y-2">${contentItems}</ul>
                         </div>`;
-                } catch(e) { console.error('Failed to render Note item:', e); }
+                } catch(e) {}
             });
         }
 
@@ -225,8 +246,8 @@
                 sBtn.className = "w-full text-left p-3 border-2 border-red-500 rounded-lg bg-red-100 text-sm mb-2 text-red-900 font-medium flex justify-between";
                 sBad.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-600 text-white"; sBad.innerText = "✕ Wrong";
                 document.querySelectorAll(`.${type}-btn-${idx}`).forEach((btn, i) => {
-                    const btnText = btn.querySelector('span').innerText.trim().toUpperCase();
-                    if (btnText.startsWith(cor + ')') || btnText.startsWith(cor + '.')) {
+                    const btnLetter = String.fromCharCode(65 + i);
+                    if (btnLetter === cor) {
                         btn.className = "w-full text-left p-3 border-2 border-green-500 rounded-lg bg-green-100 text-sm mb-2 text-green-900 font-bold flex justify-between";
                         const b = document.getElementById(`${prefix}-badge-${idx}-${i}`);
                         if(b) {
