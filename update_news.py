@@ -6,7 +6,7 @@ from datetime import datetime
 from google import genai
 from google.genai import types
 
-# 1. Initialize the new Google Gen AI Client
+# 1. Initialize the Google Gen AI Client
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
@@ -52,35 +52,35 @@ Format required:
 ]
 """
 
-# 5. Define the Response Schema for Strict JSON Output
-response_schema = types.Schema(
-    type=types.Type.ARRAY,
-    items=types.Schema(
-        type=types.Type.OBJECT,
-        properties={
-            "Date": types.Schema(type=types.Type.STRING),
-            "Subject": types.Schema(type=types.Type.STRING),
-            "Headline": types.Schema(type=types.Type.STRING),
-            "Summary": types.Schema(type=types.Type.STRING),
-            "Question": types.Schema(type=types.Type.STRING),
-            "Options": types.Schema(type=types.Type.STRING),
-            "Explanation": types.Schema(type=types.Type.STRING),
-            "Source_Link": types.Schema(type=types.Type.STRING),
+# 5. Define the Response Schema as a standard dictionary
+response_schema = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "Date": {"type": "string"},
+            "Subject": {"type": "string"},
+            "Headline": {"type": "string"},
+            "Summary": {"type": "string"},
+            "Question": {"type": "string"},
+            "Options": {"type": "string"},
+            "Explanation": {"type": "string"},
+            "Source_Link": {"type": "string"}
         },
-        required=["Date", "Subject", "Headline", "Summary", "Question", "Options", "Explanation"]
-    )
-)
+        "required": ["Date", "Subject", "Headline", "Summary", "Question", "Options", "Explanation"]
+    }
+}
 
-# 6. Generate JSON Output using the new SDK standard
+# 6. Generate JSON Output
 try:
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.0-flash",
         contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=response_schema,
-            temperature=0.2 
-        ),
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": response_schema,
+            "temperature": 0.2
+        }
     )
     
     # 7. Save output to a file for the web app to read
