@@ -75,7 +75,7 @@ response_schema = {
 try:
     # Switched back to 1.5-flash to completely avoid quota errors
     response = client.models.generate_content(
-        model="gemini-1.5-flash",
+        model="gemini-1.5-flash-8b",
         contents=prompt,
         config={
             "response_mime_type": "application/json",
