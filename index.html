@@ -1,6 +1,6 @@
-// Example robust rendering function for PYQs
+<script>
 function renderPYQs(data, lang = 'en') {
-    const container = document.getElementById('pyq-container'); // Adjust to your container ID
+    const container = document.getElementById('pyq-container');
     if (!container) return;
     
     if (!data || data.length === 0) {
@@ -9,7 +9,6 @@ function renderPYQs(data, lang = 'en') {
     }
 
     container.innerHTML = data.map(item => {
-        // Handle both capital/lowercase keys safely
         const q = item.Question || item.question || {};
         const opts = item.Options || item.options || {};
         const exp = item.Explanation || item.explanation || {};
@@ -36,9 +35,8 @@ function renderPYQs(data, lang = 'en') {
     }).join('');
 }
 
-// Example robust rendering function for Cheat Sheets
 function renderCheatSheets(data, lang = 'en') {
-    const container = document.getElementById('cheat-container'); // Adjust to your container ID
+    const container = document.getElementById('cheat-container');
     if (!container) return;
 
     if (!data || data.length === 0) {
@@ -67,3 +65,4 @@ function renderCheatSheets(data, lang = 'en') {
         `;
     }).join('');
 }
+</script>
